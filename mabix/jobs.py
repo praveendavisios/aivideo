@@ -262,6 +262,9 @@ def handle_render(ctx):
     repo.update_video(video["id"], status="processing", error=None)
     regenerate = ctx.params.get("regenerate_visuals", False)
     scenes = plan["scenes"]
+    ctx.progress(1, "Generating narration…")
+    render.prepare_narration(scenes, cfg, workdir)
+    repo.update_video(video["id"], script=plan)
     for i, scene in enumerate(scenes):
         ctx.check_cancel()
         scene["index"] = i

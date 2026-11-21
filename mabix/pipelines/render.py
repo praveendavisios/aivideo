@@ -86,7 +86,12 @@ def _visual_clip(scene, w, h, duration):
         clip = VideoFileClip(clip_path, audio=False)
         clip = _cover(clip, w, h)
         if clip.duration < duration:
-            clip = clip.with_effects([vfx.Loop(duration=duration)])
+            # Slow slightly (down to 0.7x) before falling back to a loop, which looks less repetitive.
+            speed = max(0.7, clip.duration / duration)
+            if speed < 0.999:
+                clip = clip.with_effects([vfx.MultiplySpeed(speed)])
+            if clip.duration < duration - 0.05:
+                clip = clip.with_effects([vfx.Loop(duration=duration)])
         return clip.with_duration(duration)
     if image_path and os.path.exists(image_path):
         # Ken Burns motion for still images (labelled fallback).
@@ -153,8 +158,10 @@ def render(scenes, opts, workdir, out_path, log_fn=print, cancel_check=lambda: N
         narration = scene.get("narration", "").strip()
         if not narration:
             raise RuntimeError(f"Scene {i + 1} has no narration text")
-        voice_path = os.path.join(workdir, f"voice_{i}.mp3")
-        synthesize(narration, voice_path, opts.get("voice", "en-us"), opts.get("slow_voice"))
+        voice_path = scene.get("voice")
+        if not (voice_path and os.path.exists(voice_path) and scene.get("voice_text") == narration):
+            voice_path = os.path.join(workdir, f"voice_{i}.mp3")
+            synthesize(narration, voice_path, opts.get("voice", "en-us"), opts.get("slow_voice"))
         voice = AudioFileClip(voice_path)
         duration = voice.duration + SCENE_PAD
         visual = _visual_clip(scene, w, h, duration)
@@ -185,6 +192,7 @@ def render(scenes, opts, workdir, out_path, log_fn=print, cancel_check=lambda: N
     log_fn(f"Encoding {w}x{h} MP4…")
     video.write_videofile(out_path, fps=int(opts.get("fps", 30)), codec="libx264", audio_codec="aac",
                           threads=os.cpu_count(), preset="medium", logger=None,
+                          ffmpeg_params=["-crf", "18", "-pix_fmt", "yuv420p", "-movflags", "+faststart"],
                           temp_audiofile=os.path.join(workdir, "temp_audio.m4a"))
     video.close()
     return out_path
@@ -193,3 +201,19 @@ def render(scenes, opts, workdir, out_path, log_fn=print, cancel_check=lambda: N
 def slug(text, limit=40):
     s = re.sub(r"[^a-zA-Z0-9 ]", "", text or "video")[:limit].strip().replace(" ", "_")
     return s or "video"
+
+
+def prepare_narration(scenes, opts, workdir):
+    """Synthesize narration first so each AI clip can be generated to match its scene length."""
+    from moviepy import AudioFileClip
+    for i, scene in enumerate(scenes):
+        text = scene.get("narration", "").strip()
+        if not text:
+            continue
+        path = scene.get("voice")
+        if not (path and os.path.exists(path) and scene.get("voice_text") == text):
+            path = os.path.join(workdir, f"voice_{i}.mp3")
+            synthesize(text, path, opts.get("voice", "en-us"), opts.get("slow_voice"))
+        a = AudioFileClip(path)
+        scene.update(voice=path, voice_text=text, voice_duration=round(a.duration + SCENE_PAD, 2))
+        a.close()

@@ -23,9 +23,14 @@ Sign in with `admin` / `admin` (development only). For production set `MABIX_ENV
 
 | Engine | Use | Notes |
 |---|---|---|
-| AnimateDiff (default) | text-to-video per scene | existing model, ~2 s clips |
-| **Wan 2.1 T2V 1.3B** (recommended on RTX 5080) | text-to-video per scene | ~5 s 480p clips, first run downloads the model |
+| AnimateDiff (default) | text-to-video per scene | existing model, ~2 s 512px clips — fastest, lowest quality |
+| Wan 2.1 T2V 1.3B | text-to-video per scene | 480p, 16 fps, ~8 GB VRAM |
+| **Wan 2.2 TI2V 5B** (best on RTX 5080) | text-to-video per scene | 720p, 24 fps, clip length matched to narration |
 | Stable Video Diffusion | image-to-video (uploaded images / keyframes) | opt-in: set `stabilityai/stable-video-diffusion-img2vid-xt` and `huggingface-cli login` |
+
+**Anime / cartoon styles** use a separate SD 1.5 checkpoint (Settings → *Anime / cartoon checkpoint*,
+default `Lykon/dreamshaper-8`) instead of the photoreal Realistic Vision model. Set any SD 1.5 anime model
+in diffusers format there for a purer anime look. *Quality* (Fast / Balanced / High) sets diffusion steps.
 
 The **System readiness** panel on the dashboard shows which of these actually work on your machine.
 

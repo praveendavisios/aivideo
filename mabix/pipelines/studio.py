@@ -24,7 +24,7 @@ MODULES = {
             "cinematic": "cinematic film still, dramatic lighting, shallow depth of field, 35mm",
             "realistic": "photorealistic, natural lighting, sharp focus, DSLR",
             "documentary": "documentary footage, handheld camera, natural colors",
-            "anime": "anime style, vibrant colors, detailed cel shading",
+            "anime": "anime style, masterpiece, best quality, anime key visual, detailed cel shading, vibrant colors, clean line art",
             "3d": "3D render, pixar style, soft global illumination",
             "neon": "neon cyberpunk aesthetic, glowing lights, night city",
         },
@@ -35,12 +35,13 @@ MODULES = {
         "label": "AI Animation", "icon": "film", "input_label": "Describe your animation",
         "placeholder": "e.g. A curious robot explores a candy forest and makes a friend",
         "styles": {
-            "2d": "2D flat animation style, clean vector shapes, bold outlines",
+            "2d": "2D animation style, flat colors, clean vector shapes, bold outlines, cartoon illustration",
             "3d": "3D animated movie style, pixar, soft lighting, expressive characters",
-            "cartoon": "cartoon style, exaggerated expressions, bright saturated colors",
+            "cartoon": "cartoon style, anime-inspired, exaggerated expressions, bright saturated colors, clean outlines",
             "educational": "educational explainer animation, clean infographic style, simple shapes",
             "cinematic": "cinematic animated film, dramatic lighting, detailed environment",
             "storybook": "storybook illustration, watercolor textures, warm soft colors",
+            "anime": "anime style, masterpiece, best quality, anime key visual, detailed cel shading, vibrant colors, clean line art",
         },
         "durations": [15, 30, 60, 90], "image_input": True,
         "intro": "an animated video with recurring characters, expressive movement and animated backgrounds",
@@ -51,6 +52,7 @@ MODULES = {
         "styles": {
             "cinematic": "cinematic film still, dramatic lighting, rich colors",
             "storybook": "storybook illustration, watercolor textures, warm soft colors",
+            "anime": "anime style, masterpiece, best quality, anime key visual, detailed cel shading, vibrant colors, clean line art",
             "fantasy": "epic fantasy art, magical atmosphere, detailed environment",
             "realistic": "photorealistic, natural lighting, sharp focus",
             "3d": "3D animated movie style, soft global illumination",
@@ -242,6 +244,32 @@ def generate_news_plan(article, cfg):
 
 
 # --------------------------------------------------------------- visuals
+# Styles that must not be rendered on the photoreal checkpoint.
+STYLIZED = {"anime", "cartoon", "2d", "storybook", "whiteboard"}
+STYLIZED_DEFAULT = "Lykon/dreamshaper-8"
+NEG_STYLIZED = "photorealistic, photo, realistic skin texture, 3d render, live action, dslr"
+NEG_REALISTIC = "cartoon, anime, illustration, painting, drawing, cgi"
+
+
+def is_stylized(cfg):
+    return cfg.get("style") in STYLIZED
+
+
+def base_model_for(cfg):
+    """SD 1.5 checkpoint for keyframes and AnimateDiff, chosen by visual style."""
+    if is_stylized(cfg):
+        return models.model_setting("stylized", STYLIZED_DEFAULT)
+    return None  # configured default (Realistic Vision)
+
+
+def negative_for(cfg):
+    if is_stylized(cfg):
+        return f"{NEGATIVE}, {NEG_STYLIZED}"
+    if cfg.get("style") in ("realistic", "documentary", "cinematic"):
+        return f"{NEGATIVE}, {NEG_REALISTIC}"
+    return NEGATIVE
+
+
 def visual_prompt(video_type, scene, cfg, plan):
     styles = MODULES.get(video_type, {}).get("styles", {})
     style = styles.get(cfg.get("style"), "")
@@ -262,7 +290,8 @@ def generate_keyframe(video_type, scene, idx, cfg, plan, workdir):
     w, h = keyframe_size(cfg.get("aspect"))
     out = os.path.join(workdir, f"keyframe_{idx}.png")
     models.generate_image(visual_prompt(video_type, scene, cfg, plan), out, width=w, height=h,
-                          negative=NEGATIVE, seed=cfg.get("seed", 42) + idx)
+                          negative=negative_for(cfg), seed=cfg.get("seed", 42) + idx,
+                          base_model=base_model_for(cfg))
     return out
 
 
@@ -294,7 +323,8 @@ def generate_scene_visual(video_type, scene, idx, cfg, plan, workdir, log_fn):
     if motion in ("t2v", "i2v"):
         out = os.path.join(workdir, f"clip_{idx}.mp4")
         try:
-            models.generate_video_clip(prompt, out, negative=NEGATIVE, seed=seed, aspect=cfg.get("aspect"))
+            models.generate_video_clip(prompt, out, negative=negative_for(cfg), seed=seed, aspect=cfg.get("aspect"),
+                                       duration=scene.get("voice_duration"), base_model=base_model_for(cfg))
             scene.update(clip=out, visual_kind=f"ai-video ({models.video_engine()})")
             return scene
         except Exception as exc:
