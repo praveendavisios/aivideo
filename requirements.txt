@@ -1,0 +1,30 @@
+# --- Web app / rendering -------------------------------------------------
+flask>=3.0
+moviepy>=2.1
+gTTS>=2.5
+feedparser>=6.0
+requests>=2.31
+numpy>=1.26
+Pillow>=10.0
+imageio>=2.34
+imageio-ffmpeg>=0.5
+
+# --- YouTube publishing (existing integration) ---------------------------
+google-api-python-client>=2.100
+google-auth>=2.23
+google-auth-oauthlib>=1.1
+
+# --- AI models (GPU) -----------------------------------------------------
+# RTX 50-series (Blackwell, sm_120) needs a CUDA 12.8+ PyTorch build. Install
+# torch FIRST from the PyTorch index, then the rest of this file:
+#   pip install torch torchvision --index-url https://download.pytorch.org/whl/cu128
+torch>=2.7
+diffusers>=0.33        # WanPipeline (Wan 2.1) needs >= 0.33
+transformers>=4.45
+accelerate>=0.34
+safetensors>=0.4
+sentencepiece>=0.2     # Wan's UMT5 text encoder
+ftfy>=6.2              # Wan prompt cleaning
+
+# --- Tests -----------------------------------------------------------------
+pytest>=8.0

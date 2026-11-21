@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon %}
+{% block title %}News Feed Videos{% endblock %}
+{% block content %}
+<div class="grid grid-3">
+  <div class="card span-2">
+    <div class="card-head">
+      <div><h2>Live news articles</h2><p class="subtle">Google News RSS — the same source as the original generator.</p></div>
+      <div class="actions">
+        <select id="category" aria-label="Category" style="width:auto">{% for c in categories %}<option value="{{ c }}">{{ c|capitalize if c != 'ai' else 'AI' }}</option>{% endfor %}</select>
+        <select id="count" aria-label="Number of articles" style="width:auto"><option>5</option><option selected>10</option><option>20</option><option>30</option></select>
+        <button class="btn icon-only" id="reload" aria-label="Refresh">{{ icon('refresh', 'sm') }}</button>
+      </div>
+    </div>
+    <div class="table-wrap"><table class="table" id="articles"><tbody><tr><td><div class="skeleton" style="height:180px"></div></td></tr></tbody></table></div>
+  </div>
+
+  <aside class="stack">
+    <div class="card">
+      <div class="card-head"><h2>Generate</h2><span class="badge brand" id="sel-count">0 selected</span></div>
+      <div class="card-body stack">
+        <div class="field"><span class="label">Format</span>
+          <div class="seg">
+            <label><input type="radio" name="format" value="short" checked><span><i class="ratio r916"></i>Shorts</span></label>
+            <label><input type="radio" name="format" value="instagram"><span><i class="ratio r11"></i>Reel 1:1</span></label>
+            <label><input type="radio" name="format" value="youtube"><span><i class="ratio r169"></i>YouTube</span></label>
+          </div></div>
+        <div class="field"><span class="label">Mode</span>
+          <label class="check"><input type="radio" name="mode" value="quick" checked> Quick — original one-click news pipeline</label>
+          <label class="check"><input type="radio" name="mode" value="review"> Review — edit script & scenes before rendering</label></div>
+        <div class="field" id="motion-field" hidden><label for="motion">Scene visuals (review mode)</label>
+          <select id="motion"><option value="none">Stock/AI images + camera motion</option><option value="t2v">AI video per scene (text-to-video)</option></select></div>
+        <label class="check"><input type="checkbox" id="ai_only"> AI images only (skip Pexels/Pixabay)</label>
+        <button class="btn primary" id="generate" disabled>{{ icon('wand', 'sm') }} Generate news videos</button>
+        <p class="subtle">Each selected article becomes its own job. Progress appears in Generation History and the finished videos in the Video Library.</p>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-head"><h2>Recent news videos</h2><a class="subtle" href="{{ url_for('pages.library_page') }}?filter=news">All →</a></div>
+      <ul class="list" id="recent"></ul>
+    </div>
+    <p class="subtle">Prefer the old screen? <a href="{{ url_for('legacy.classic') }}">Open the classic generator</a>.</p>
+  </aside>
+</div>
+{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='js/news.js') }}?v={{ app_version }}"></script>{% endblock %}

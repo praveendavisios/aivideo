@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon %}
+{% block title %}Dashboard{% endblock %}
+{% block content %}
+<section class="hero" style="margin-bottom:20px">
+  <h1>Welcome back, {{ admin_name }}</h1>
+  <p>Generate AI shorts, animations, stories, explainers and news videos — or upload your own and publish them.</p>
+</section>
+
+<div class="grid grid-4 stats" id="stats" aria-label="Video statistics">
+  {% for key, label, ic, tone in [
+    ('total','Total videos','library',''), ('ai_generated','AI-generated','sparkles',''),
+    ('uploaded','Uploaded','upload','info'), ('today','Generated today','zap',''),
+    ('processing','Processing','loader','warn'), ('completed','Completed','check-circle','good'),
+    ('failed','Failed','alert','bad'), ('published','Published','send','good')] %}
+  <div class="card stat {{ tone }}"><div class="ico">{{ icon(ic) }}</div>
+    <div><div class="val" data-stat="{{ key }}"><span class="skeleton" style="display:inline-block;width:40px;height:24px"></span></div>
+    <div class="lbl">{{ label }}</div></div></div>
+  {% endfor %}
+</div>
+
+<div class="card" style="margin-top:20px">
+  <div class="card-head"><h2>Quick actions</h2></div>
+  <div class="card-body">
+    <div class="quick">
+      <a href="{{ url_for('pages.studio_page', module='short') }}"><span class="qi">{{ icon('zap') }}</span><b>Create AI Short Video</b><small>Prompt → vertical short</small></a>
+      <a href="{{ url_for('pages.studio_page', module='animation') }}"><span class="qi">{{ icon('film') }}</span><b>Create Animation</b><small>Characters & motion</small></a>
+      <a href="{{ url_for('pages.studio_page', module='story') }}"><span class="qi">{{ icon('book') }}</span><b>Create AI Story</b><small>Idea → narrated story</small></a>
+      <a href="{{ url_for('pages.studio_page', module='answer') }}"><span class="qi">{{ icon('help') }}</span><b>Short Answer Video</b><small>Question → explainer</small></a>
+      <a href="{{ url_for('pages.news_page') }}"><span class="qi">{{ icon('news') }}</span><b>Generate News Video</b><small>From live news feeds</small></a>
+      <a href="{{ url_for('pages.upload_page') }}"><span class="qi">{{ icon('upload') }}</span><b>Upload Video</b><small>MP4, MOV, WebM…</small></a>
+    </div>
+  </div>
+</div>
+
+<div class="grid grid-3" style="margin-top:20px">
+  <div class="card span-2">
+    <div class="card-head"><div><h2>Videos created</h2><p class="subtle">Last 14 days · all types</p></div>
+      <div class="actions"><span class="subtle" id="chart-total"></span></div></div>
+    <div class="card-body"><div class="chart" id="chart"></div>
+      <details style="margin-top:8px"><summary class="subtle" style="cursor:pointer">Show as table</summary><div class="table-wrap" id="chart-table"></div></details></div>
+  </div>
+  <div class="card">
+    <div class="card-head"><h2>Generation status</h2><a class="subtle" href="{{ url_for('pages.history_page') }}">History →</a></div>
+    <div class="card-body"><div class="statusbars" id="statusbars"></div>
+      <div class="divider"></div><h3 style="margin-bottom:8px">By type</h3><div class="statusbars" id="typebars"></div></div>
+  </div>
+</div>
+
+<div class="grid grid-3" style="margin-top:20px">
+  <div class="card span-2">
+    <div class="card-head"><h2>Recent generation activity</h2><a class="subtle" href="{{ url_for('pages.history_page') }}">View all →</a></div>
+    <ul class="list" id="activity"></ul>
+  </div>
+  <div class="card">
+    <div class="card-head"><h2>System readiness</h2><button class="btn ghost sm" id="caps-refresh">{{ icon('refresh', 'sm') }} Check</button></div>
+    <div class="card-body"><div class="caps" id="caps"><div class="skeleton" style="height:180px"></div></div></div>
+  </div>
+</div>
+
+<div class="grid grid-2" style="margin-top:20px">
+  <div class="card">
+    <div class="card-head"><h2>Recently completed</h2><a class="subtle" href="{{ url_for('pages.library_page') }}?filter=completed">Library →</a></div>
+    <ul class="list" id="completed"></ul>
+  </div>
+  <div class="card">
+    <div class="card-head"><h2>Latest uploads</h2><a class="subtle" href="{{ url_for('pages.library_page') }}?filter=uploaded">Library →</a></div>
+    <ul class="list" id="uploads"></ul>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='js/dashboard.js') }}?v={{ app_version }}"></script>{% endblock %}

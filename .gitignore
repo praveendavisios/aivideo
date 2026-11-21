@@ -1,0 +1,17 @@
+__pycache__/
+*.pyc
+.pytest_cache/
+.env
+storage/
+videos/
+youtube_token.json
+client_secret*.json
+# temp files written by the original pipeline in the working directory
+/scene*.jpg
+/scene_*.jpg
+/voice.mp3
+/sound_*.wav
+/content_scene_*.mp4
+/story_*.mp4
+/fallback*.mp4
+/content_video.mp4

@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon %}
+{% block title %}{{ spec.label }}{% endblock %}
+{% block crumb %}AI Video Studio{% endblock %}
+{% block content %}
+<ol class="steps" aria-label="Workflow">
+  <li class="now">Input</li><li>Configure</li><li>AI script</li><li>Review & edit</li><li>AI video render</li><li>Preview & publish</li>
+</ol>
+
+<div id="readiness"></div>
+
+<div class="grid grid-3">
+  <form class="card span-2" id="studio-form" data-module="{{ module }}" novalidate>
+    <div class="card-head"><div><h2>{{ icon(spec.icon) }} {{ spec.label }}</h2></div></div>
+    <div class="card-body stack">
+      <div class="field">
+        <label for="prompt">{{ spec.input_label }}</label>
+        <textarea id="prompt" name="prompt" class="prompt-box" maxlength="4000" required placeholder="{{ spec.placeholder }}"></textarea>
+        <span class="hint">{% if module == 'answer' %}The AI writes an accurate, concise answer, splits it into sections and highlights key terms.{% elif module == 'story' %}The AI writes a full story with introduction, main story and conclusion, then breaks it into scenes.{% elif module == 'animation' %}The AI creates characters with a fixed look, then animates each scene.{% else %}The AI writes a hook-first script, then generates an AI video clip for every scene.{% endif %}</span>
+      </div>
+
+      {% if categories %}
+      <div class="field"><span class="label">Story category</span>
+        <div class="styles">{% for k, label in categories.items() %}
+          <label><input type="radio" name="category" value="{{ k }}" {{ 'checked' if loop.first }}><span>{{ label }}</span></label>{% endfor %}</div></div>
+      {% endif %}
+
+      <div class="field"><span class="label">Visual style</span>
+        <div class="styles">{% for k in spec.styles %}
+          <label><input type="radio" name="style" value="{{ k }}" {{ 'checked' if loop.first }}><span>{{ k|replace('3d','3D')|replace('2d','2D') }}</span></label>{% endfor %}</div></div>
+
+      <div class="form-grid">
+        <div class="field"><span class="label">Aspect ratio</span>
+          <div class="seg" role="radiogroup">
+            <label><input type="radio" name="aspect" value="9:16" checked><span><i class="ratio r916"></i>9:16</span></label>
+            <label><input type="radio" name="aspect" value="16:9"><span><i class="ratio r169"></i>16:9</span></label>
+            <label><input type="radio" name="aspect" value="1:1"><span><i class="ratio r11"></i>1:1</span></label>
+          </div></div>
+        <div class="field"><span class="label">Duration</span>
+          <div class="seg" role="radiogroup">{% for d in spec.durations %}
+            <label><input type="radio" name="duration" value="{{ d }}" {{ 'checked' if loop.index == 2 }}><span>{{ d }}s</span></label>{% endfor %}</div></div>
+      </div>
+
+      {% if spec.image_input %}
+      <div class="field"><label for="images">Reference images <span class="subtle">(optional · image-to-video)</span></label>
+        <input type="file" id="images" name="images" accept="image/png,image/jpeg,image/webp" multiple>
+        <div class="imgs" id="img-preview"></div>
+        <span class="hint" id="i2v-hint"></span></div>
+      {% endif %}
+    </div>
+
+    <details class="adv" open>
+      <summary>{{ icon('settings', 'sm') }} Video configuration {{ icon('chev', 'sm chev') }}</summary>
+      <div class="inner form-grid">
+        <div class="field"><label for="motion">Visual generation</label><select id="motion" name="motion"></select>
+          <span class="hint" id="motion-hint"></span></div>
+        <div class="field"><label for="resolution">Resolution</label>
+          <select id="resolution" name="resolution"><option value="1080p">1080p (Full HD)</option><option value="720p">720p (HD)</option></select></div>
+        <div class="field"><label for="voice">Narration voice</label><select id="voice" name="voice"></select></div>
+        <div class="field"><label for="transition">Scene transition</label><select id="transition" name="transition"></select></div>
+        <div class="field"><label for="music">Background music</label><select id="music" name="music"><option value="">None</option></select>
+          <span class="hint"><a href="{{ url_for('pages.settings_page') }}#music">Manage music library</a></span></div>
+        <div class="field"><label for="music_volume">Music volume <span class="subtle" id="vol-out">12%</span></label>
+          <input type="range" id="music_volume" name="music_volume" min="0" max="0.5" step="0.01" value="0.12"></div>
+        <div class="field"><label for="subtitles_size">Subtitles</label>
+          <select id="subtitles_size" name="subtitles_size"><option value="medium">Medium</option><option value="small">Small</option><option value="large">Large</option></select></div>
+        <div class="field"><label for="subtitles_position">Subtitle position</label>
+          <select id="subtitles_position" name="subtitles_position"><option value="bottom">Bottom</option><option value="center">Center</option><option value="top">Top</option></select></div>
+        <div class="field"><label for="subtitles_color">Subtitle color</label>
+          <select id="subtitles_color" name="subtitles_color"><option value="white">White</option><option value="#FFD84D">Yellow</option></select></div>
+        <div class="field" style="justify-content:flex-end;gap:10px">
+          <label class="check"><input type="checkbox" name="subtitles_enabled" value="1" checked> Burn-in captions</label>
+          <label class="check"><input type="checkbox" name="slow_voice" value="1"> Slower narration</label>
+          {% if module != 'answer' %}<label class="check"><input type="checkbox" name="headings" value="1"> On-screen headings</label>{% endif %}
+        </div>
+      </div>
+    </details>
+
+    <div class="card-body" style="border-top:1px solid var(--border)">
+      <div class="row">
+        <label class="check"><input type="checkbox" name="review" value="1" checked> Review & edit the script before rendering</label>
+        <span class="spacer"></span>
+        <button class="btn primary" type="submit" id="submit">{{ icon('wand', 'sm') }} Generate</button>
+      </div>
+    </div>
+  </form>
+
+  <aside class="stack">
+    <div class="card">
+      <div class="card-head"><h2>Recent {{ spec.label|lower }}</h2><a class="subtle" href="{{ url_for('pages.library_page') }}?type={{ module }}">All →</a></div>
+      <ul class="list" id="recent"></ul>
+    </div>
+    <div class="card card-pad">
+      <h3 style="margin-bottom:8px">How it works</h3>
+      <ol class="muted" style="margin:0;padding-left:18px;display:grid;gap:6px;font-size:13.5px">
+        <li>Your local LLM (Ollama) writes the script and scene breakdown.</li>
+        <li>You review and edit narration and visual prompts.</li>
+        <li>Your GPU generates an AI video clip for every scene.</li>
+        <li>Narration, captions, transitions and music are added.</li>
+        <li>The finished video lands in your Video Library.</li>
+      </ol>
+    </div>
+  </aside>
+</div>
+{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='js/studio.js') }}?v={{ app_version }}"></script>{% endblock %}

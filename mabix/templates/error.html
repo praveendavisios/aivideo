@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block title %}{{ code }}{% endblock %}
+{% block content %}
+<div class="card">{{ '' }}
+  <div class="empty"><div class="ei"><svg class="icon lg"><use href="#i-alert"/></svg></div>
+    <h3>{{ code }} — {{ message }}</h3><p>The page you requested could not be shown.</p>
+    <a class="btn primary" href="{{ url_for('pages.dashboard') }}">Back to dashboard</a></div>
+</div>
+{% endblock %}

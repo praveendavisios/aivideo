@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon %}
+{% block title %}Direct Upload{% endblock %}
+{% block content %}
+<div class="grid grid-3">
+  <div class="span-2 stack">
+    <label class="dropzone" id="drop" for="file">
+      <div class="ei">{{ icon('upload', 'lg') }}</div>
+      <h3>Drop videos here or click to browse</h3>
+      <p class="subtle" style="margin-top:4px">{{ exts|join(', ')|upper }} · up to {{ max_mb }} MB each</p>
+      <input type="file" id="file" accept="{% for e in exts %}.{{ e }},{% endfor %}video/*" multiple class="sr-only">
+    </label>
+
+    <div class="card">
+      <div class="card-head"><h2>Video details</h2><span class="subtle">Applied to the next upload(s)</span></div>
+      <div class="card-body form-grid">
+        <div class="field"><label for="title">Title</label><input type="text" id="title" placeholder="Defaults to the file name" maxlength="200"></div>
+        <div class="field"><label for="category">Category</label><input type="text" id="category" placeholder="e.g. Tutorials" maxlength="100"></div>
+        <div class="field"><label for="tags">Tags</label><input type="text" id="tags" placeholder="comma separated" maxlength="500"></div>
+        <div class="field" style="grid-column:1/-1"><label for="description">Description</label><textarea id="description" rows="3"></textarea></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><h2>Uploads</h2><span class="subtle" id="queue-summary"></span></div>
+      <div id="queue"><div class="empty" style="padding:28px">No uploads in this session yet.</div></div>
+    </div>
+  </div>
+  <aside class="stack">
+    <div class="card">
+      <div class="card-head"><h2>Recently uploaded</h2><a class="subtle" href="{{ url_for('pages.library_page') }}?filter=uploaded">All →</a></div>
+      <ul class="list" id="recent"></ul>
+    </div>
+    <div class="card card-pad">
+      <h3 style="margin-bottom:8px">After uploading</h3>
+      <p class="muted" style="font-size:13.5px">Uploaded videos are validated, given a thumbnail and stored in the Video Library, where you can preview, download, edit details or publish them to YouTube.</p>
+    </div>
+  </aside>
+</div>
+{% endblock %}
+{% block scripts %}<script>window.MAX_MB = {{ max_mb }}; window.EXTS = {{ exts|tojson }};</script>
+<script src="{{ url_for('static', filename='js/upload.js') }}?v={{ app_version }}"></script>{% endblock %}
