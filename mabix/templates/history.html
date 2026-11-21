@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon %}
+{% block title %}Generation History{% endblock %}
+{% block content %}
+<div class="toolbar">
+  <div class="search">{{ icon('search', 'sm') }}<input type="search" id="q" placeholder="Search prompt, topic or title…" aria-label="Search jobs"></div>
+  <select id="kind" aria-label="Job type" style="width:auto"><option value="">All job types</option><option value="script">Script</option><option value="storyboard">Storyboard</option><option value="render">Render</option><option value="news">News video</option><option value="publish">Publish</option></select>
+  <span class="spacer"></span>
+  <label class="check"><input type="checkbox" id="auto" checked> Live updates</label>
+</div>
+<div class="filters" id="filters" style="margin-bottom:16px" role="tablist" aria-label="Filter by status">
+  {% for k, l in [('','All'),('pending','Pending'),('queued','Queued'),('processing','Processing'),('completed','Completed'),('failed','Failed'),('cancelled','Cancelled')] %}
+  <button class="pill {{ 'on' if loop.first }}" data-status="{{ k }}" role="tab">{{ l }}</button>{% endfor %}
+</div>
+<div class="card">
+  <div class="table-wrap">
+    <table class="table">
+      <thead><tr><th>Job</th><th>Type</th><th>Prompt / topic</th><th>Status</th><th>Progress</th><th>Requested</th><th>Duration</th><th></th></tr></thead>
+      <tbody id="rows"><tr><td colspan="8"><div class="skeleton" style="height:160px"></div></td></tr></tbody>
+    </table>
+  </div>
+</div>
+<div class="pager" id="pager"></div>
+{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='js/history.js') }}?v={{ app_version }}"></script>{% endblock %}

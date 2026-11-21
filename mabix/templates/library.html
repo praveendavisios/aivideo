@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon %}
+{% block title %}Video Library{% endblock %}
+{% block content %}
+<div class="toolbar">
+  <div class="search">{{ icon('search', 'sm') }}<input type="search" id="q" placeholder="Search title, description, prompt, tags…" aria-label="Search videos"></div>
+  <select id="type" aria-label="Video type" style="width:auto">
+    <option value="">All types</option><option value="short">AI Short</option><option value="animation">Animation</option>
+    <option value="story">Story</option><option value="answer">Short Answer</option><option value="news">News</option><option value="upload">Uploaded</option>
+  </select>
+  <select id="sort" aria-label="Sort" style="width:auto">
+    <option value="newest">Newest first</option><option value="oldest">Oldest first</option><option value="updated">Recently updated</option>
+    <option value="title">Title A–Z</option><option value="duration">Longest</option>
+  </select>
+  <span class="spacer"></span>
+  <span class="subtle" id="total"></span>
+</div>
+<div class="filters" id="filters" style="margin-bottom:18px" role="tablist" aria-label="Filter videos">
+  {% for k, l in [('all','All videos'),('ai','AI-generated'),('uploaded','Uploaded'),('news','News'),('short','Shorts'),('animation','Animation'),('story','Stories'),('educational','Educational'),('completed','Completed'),('processing','Processing'),('review','Needs review'),('failed','Failed'),('published','Published')] %}
+  <button class="pill {{ 'on' if loop.first }}" data-filter="{{ k }}" role="tab">{{ l }}</button>{% endfor %}
+</div>
+<div class="vgrid" id="grid"></div>
+<div class="pager" id="pager"></div>
+{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='js/library.js') }}?v={{ app_version }}"></script>{% endblock %}

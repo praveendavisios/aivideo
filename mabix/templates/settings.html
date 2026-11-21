@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon %}
+{% block title %}Settings{% endblock %}
+{% block content %}
+<div class="filters" style="margin-bottom:18px">
+  {% for k, l in [('profile','Profile & security'),('models','AI models'),('defaults','Video defaults'),('music','Music library'),('integrations','API & publishing'),('storage','Storage'),('preferences','Preferences')] %}
+  <a class="pill" href="#{{ k }}" style="display:inline-flex;align-items:center;text-decoration:none">{{ l }}</a>{% endfor %}
+</div>
+
+<div class="stack" style="gap:20px">
+  <section class="card" id="profile">
+    <div class="card-head"><h2>{{ icon('user') }} Admin profile & authentication</h2></div>
+    <div class="card-body grid grid-2">
+      <dl id="profile-info" style="margin:0;display:grid;grid-template-columns:auto 1fr;gap:8px 14px;font-size:13.5px"></dl>
+      <form id="pw-form" class="stack" autocomplete="off">
+        <h3>Change password</h3>
+        <div class="field"><label for="pw-cur">Current password</label><input type="password" id="pw-cur" autocomplete="current-password" required></div>
+        <div class="field"><label for="pw-new">New password</label><input type="password" id="pw-new" autocomplete="new-password" minlength="10" required><span class="hint">At least 10 characters. Stored as a salted hash; overrides the environment password.</span></div>
+        <div class="field"><label for="pw-new2">Confirm new password</label><input type="password" id="pw-new2" autocomplete="new-password" required></div>
+        <div><button class="btn primary" type="submit">Update password</button></div>
+      </form>
+    </div>
+  </section>
+
+  <section class="card" id="models">
+    <div class="card-head"><h2>{{ icon('cpu') }} AI model configuration</h2><button class="btn sm" id="caps-refresh">{{ icon('refresh', 'sm') }} Re-check</button></div>
+    <div class="card-body grid grid-2">
+      <form id="models-form" class="stack">
+        <div class="field"><label for="m-video_engine">Text-to-video engine</label><select id="m-video_engine" name="video_engine"></select>
+          <span class="hint">Wan 2.1 1.3B fits comfortably in an RTX 5080's 16 GB and gives much better motion. First use downloads the model (~20 GB incl. text encoder).</span></div>
+        <div class="field"><label for="m-wan">Wan model (Hugging Face id or local path)</label><input type="text" id="m-wan" name="wan"></div>
+        <div class="field"><label for="m-svd">Stable Video Diffusion model <span class="subtle">(image-to-video, optional)</span></label>
+          <input type="text" id="m-svd" name="svd" placeholder="stabilityai/stable-video-diffusion-img2vid-xt">
+          <span class="hint">Leave empty to disable. Needs accepting the model licence on Hugging Face and logging in with <span class="mono">huggingface-cli login</span>.</span></div>
+        <div class="field"><label for="m-sd">Stable Diffusion checkpoint (keyframes & news images)</label><input type="text" id="m-sd" name="sd"></div>
+        <div class="field"><label for="m-animatediff">AnimateDiff motion adapter</label><input type="text" id="m-animatediff" name="animatediff"></div>
+        <div class="form-grid">
+          <div class="field"><label for="m-ollama">Ollama model</label><input type="text" id="m-ollama" name="ollama"></div>
+          <div class="field"><label for="m-ollama_host">Ollama host</label><input type="text" id="m-ollama_host" name="ollama_host"></div>
+        </div>
+        <div><button class="btn primary" type="submit">Save model settings</button></div>
+      </form>
+      <div><h3 style="margin-bottom:6px">System readiness</h3><div class="caps" id="caps"><div class="skeleton" style="height:220px"></div></div></div>
+    </div>
+  </section>
+
+  <section class="card" id="defaults">
+    <div class="card-head"><h2>{{ icon('film') }} Video generation defaults</h2></div>
+    <form class="card-body form-grid" id="defaults-form">
+      <div class="field"><label for="d-aspect">Aspect ratio</label><select id="d-aspect" name="aspect"><option>9:16</option><option>16:9</option><option>1:1</option></select></div>
+      <div class="field"><label for="d-resolution">Resolution</label><select id="d-resolution" name="resolution"><option>1080p</option><option>720p</option></select></div>
+      <div class="field"><label for="d-motion">Visual generation</label><select id="d-motion" name="motion"><option value="t2v">AI video per scene</option><option value="i2v">AI video from keyframes (SVD)</option><option value="none">AI images + camera motion</option></select></div>
+      <div class="field"><label for="d-voice">Narration voice</label><select id="d-voice" name="voice"></select></div>
+      <div class="field"><label for="d-transition">Transition</label><select id="d-transition" name="transition"><option value="crossfade">Crossfade</option><option value="fade">Fade through black</option><option value="none">Hard cut</option></select></div>
+      <div class="field"><label for="d-music">Default music</label><select id="d-music" name="music"><option value="">None</option></select></div>
+      <div class="field"><label for="d-subsize">Subtitle size</label><select id="d-subsize"><option value="small">Small</option><option value="medium">Medium</option><option value="large">Large</option></select></div>
+      <div class="field"><label for="d-subpos">Subtitle position</label><select id="d-subpos"><option value="bottom">Bottom</option><option value="center">Center</option><option value="top">Top</option></select></div>
+      <div class="field" style="justify-content:flex-end;gap:8px">
+        <label class="check"><input type="checkbox" id="d-subs"> Burn-in captions</label>
+        <label class="check"><input type="checkbox" id="d-review"> Review script before render</label></div>
+      <div style="grid-column:1/-1"><button class="btn primary" type="submit">Save defaults</button></div>
+    </form>
+  </section>
+
+  <section class="card" id="music">
+    <div class="card-head"><h2>{{ icon('music') }} Background music library</h2>
+      <label class="btn sm primary" for="music-file">{{ icon('upload', 'sm') }} Add track</label>
+      <input type="file" id="music-file" accept=".mp3,.wav,.m4a,.aac,.ogg,audio/*" class="sr-only"></div>
+    <p class="card-body subtle" style="padding-bottom:0">Use tracks you have the rights to (e.g. royalty-free). They appear in every studio's music picker and are mixed under the narration.</p>
+    <ul class="list" id="music-list"></ul>
+  </section>
+
+  <section class="card" id="integrations">
+    <div class="card-head"><h2>{{ icon('shield') }} API configuration & publishing</h2></div>
+    <div class="card-body grid grid-2">
+      <div><h3 style="margin-bottom:8px">API keys</h3><div class="caps" id="api-keys"></div>
+        <p class="subtle" style="margin-top:8px">Keys are read from environment variables (<span class="mono">PEXELS_API_KEY</span>, <span class="mono">PIXABAY_API_KEY</span>) and are never sent to the browser.</p></div>
+      <div><h3 style="margin-bottom:8px">Publishing integrations</h3><div class="caps" id="pub"></div>
+        <p class="subtle" style="margin-top:8px">YouTube uses the existing OAuth token file. Place it next to <span class="mono">app.py</span> or set <span class="mono">MABIX_YOUTUBE_TOKEN</span>.</p></div>
+    </div>
+  </section>
+
+  <section class="card" id="storage">
+    <div class="card-head"><h2>{{ icon('hdd') }} Storage</h2></div>
+    <div class="card-body"><dl id="storage-info" style="margin:0;display:grid;grid-template-columns:auto 1fr;gap:8px 14px;font-size:13.5px"></dl></div>
+  </section>
+
+  <section class="card" id="preferences">
+    <div class="card-head"><h2>{{ icon('palette') }} Application preferences</h2></div>
+    <form class="card-body form-grid" id="prefs-form">
+      <div class="field"><span class="label">Theme</span>
+        <div class="seg"><label><input type="radio" name="theme" value="system"><span>System</span></label>
+          <label><input type="radio" name="theme" value="light"><span>{{ icon('sun', 'sm') }} Light</span></label>
+          <label><input type="radio" name="theme" value="dark"><span>{{ icon('moon', 'sm') }} Dark</span></label></div></div>
+      <div style="grid-column:1/-1"><button class="btn primary" type="submit">Save preferences</button></div>
+    </form>
+  </section>
+</div>
+{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='js/settings.js') }}?v={{ app_version }}"></script>{% endblock %}

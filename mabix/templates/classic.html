@@ -1,0 +1,637 @@
+<html>
+
+<head>
+
+<title>Classic Generator · Mabix AI</title>
+<meta name="csrf-token" content="{{ csrf_token() }}">
+<script>
+// Mabix: attach the CSRF token to the classic UI's POST requests.
+(function(){const t=document.querySelector('meta[name=csrf-token]').content;const f=window.fetch;
+window.fetch=function(u,o){o=o||{};if(o.method&&o.method.toUpperCase()!=='GET'){o.headers=Object.assign({},o.headers||{},{'X-CSRF-Token':t});}return f(u,o);};})();
+</script>
+
+
+<style>
+
+body{
+  font-family: 'Segoe UI', Arial, sans-serif;
+  background: linear-gradient(135deg,#eef2f7,#e6ecf5);
+  margin:0;
+}
+
+/* CONTAINER */
+.container{
+  max-width:1200px;
+  margin:40px auto;
+  background:white;
+  padding:30px;
+  border-radius:16px;
+  box-shadow:0 15px 40px rgba(0,0,0,0.08);
+}
+
+/* HEADINGS */
+h2{
+  margin-bottom:20px;
+  color:#222;
+}
+
+h3{
+  margin-top:25px;
+  margin-bottom:10px;
+  color:#444;
+}
+
+/* SECTION CARDS */
+.section{
+  background:#f9fbff;
+  padding:15px 20px;
+  border-radius:12px;
+  margin-top:15px;
+  border:1px solid #eef2f7;
+}
+
+/* FLEX ROW */
+.row{
+  display:flex;
+  flex-wrap:wrap;
+  gap:15px;
+  align-items:center;
+}
+
+/* INPUTS */
+select, textarea, input[type="file"]{
+  padding:10px;
+  border-radius:8px;
+  border:1px solid #d0d7e2;
+  font-size:14px;
+}
+
+textarea{
+  width:100%;
+  min-height:120px;
+}
+
+/* BUTTON */
+button{
+  padding:10px 18px;
+  background:linear-gradient(135deg,#28a745,#20c997);
+  color:white;
+  border:none;
+  border-radius:8px;
+  cursor:pointer;
+  font-weight:500;
+  transition:0.2s;
+}
+
+button:hover{
+  transform:translateY(-1px);
+  box-shadow:0 5px 15px rgba(0,0,0,0.1);
+}
+
+/* TABLE */
+table{
+  width:100%;
+  border-collapse:collapse;
+  margin-top:10px;
+  border-radius:10px;
+  overflow:hidden;
+}
+
+th{
+  background:linear-gradient(135deg,#007bff,#0056d2);
+  color:white;
+  font-weight:500;
+}
+
+th,td{
+  padding:10px;
+  border-bottom:1px solid #eee;
+}
+
+tr:hover{
+  background:#f5f8ff;
+}
+
+/* PROGRESS */
+.progress{
+  width:100%;
+  background:#e5e9f2;
+  height:20px;
+  border-radius:10px;
+  margin-top:20px;
+  overflow:hidden;
+}
+
+.progress-bar{
+  height:100%;
+  width:0%;
+  background:linear-gradient(90deg,#007bff,#00c6ff);
+  transition:0.3s;
+}
+
+/* VIDEO */
+video{
+  width:180px;
+  border-radius:8px;
+  box-shadow:0 5px 10px rgba(0,0,0,0.1);
+}
+
+/* CHECKBOX */
+label{
+  display:flex;
+  align-items:center;
+  gap:6px;
+}
+
+/* POPUP */
+.popup {
+  display:none;
+  position:fixed;
+  top:0;
+  left:0;
+  width:100%;
+  height:100%;
+  background:rgba(0,0,0,0.7);
+  justify-content:center;
+  align-items:center;
+}
+
+.popup video{
+  max-width:90vw;
+  max-height:75vh;
+}
+
+/* IMAGES USED */
+.imagesUsed{
+  font-size:12px;
+  color:#666;
+  max-width:200px;
+  word-wrap:break-word;
+}
+
+/* RESPONSIVE */
+@media(max-width:768px){
+  .row{
+    flex-direction:column;
+    align-items:stretch;
+  }
+
+  video{
+    width:100%;
+  }
+}
+
+</style>
+
+</head>
+
+<body>
+
+<div class="container">
+
+<p><a href="/dashboard">← Back to Mabix AI dashboard</a></p>
+<h2>AI News Video Generator (classic)</h2>
+
+<!-- 🔹 MODE -->
+<h3>Select Mode</h3>
+<select id="type" onchange="onTypeChange()">
+  <option value="news">News</option>
+  <option value="content">Content</option>
+  <option value="story">Story</option>
+</select>
+
+<!-- 🔹 NEWS SETTINGS -->
+<div id="newsSection" class="section">
+
+  <div class="row">
+    <div>
+      <label>Number of Videos</label><br>
+      <select id="count" onchange="loadNews()">
+        <option value="1">1</option>
+        <option value="2">2</option>
+        <option value="3">3</option>
+        <option value="5">5</option>
+        <option value="10">10</option>
+      </select>
+    </div>
+
+    <div>
+      <label>Category</label><br>
+      <select id="category" onchange="loadNews()">
+
+    <option value="world">World</option>
+    <option value="technology">Technology</option>
+    <option value="business">Business</option>
+    <option value="sports">Sports</option>
+    <option value="science">Science</option>
+
+    <option value="politics">Politics</option>
+    <option value="economy">Economy</option>
+    <option value="finance">Finance</option>
+    <option value="health">Health</option>
+    <option value="education">Education</option>
+    <option value="environment">Environment</option>
+    <option value="climate">Climate</option>
+
+    <option value="entertainment">Entertainment</option>
+    <option value="movies">Movies</option>
+    <option value="music">Music</option>
+    <option value="celebrity">Celebrity</option>
+
+    <option value="gaming">Gaming</option>
+    <option value="ai">AI</option>
+    <option value="startups">Startups</option>
+
+    <option value="crime">Crime</option>
+    <option value="law">Law</option>
+    <option value="military">Military</option>
+
+    <option value="space">Space</option>
+    <option value="innovation">Innovation</option>
+
+  </select>
+
+</div>
+
+<!-- 🔹 CONTENT MODE -->
+<div id="contentSection" class="section" style="display:none; margin-top:10px;">
+  <h3>Enter Content</h3>
+  <textarea id="contentText" style="width:100%;height:120px;"
+    placeholder="Enter your content"></textarea>
+</div>
+
+<!-- 🔹 STORY MODE -->
+<div id="storySection" class="section" style="display:none; margin-top:10px;">
+  <h3>Upload Story Images</h3>
+  <input type="file" id="storyImages" multiple accept="image/*" />
+</div>
+
+<br>
+
+<!-- 🔹 COMMON SETTINGS -->
+Format
+<select id="format">
+  <option value="short">YouTube Shorts</option>
+  <option value="instagram">Instagram Reel</option>
+  <option value="youtube">YouTube Normal</option>
+</select>
+
+<label style="margin-left:10px;">
+  <input type="checkbox" id="aiOnly"> AI Images Only
+</label>
+
+<button onclick="generate()">Generate Videos</button>
+
+<!-- 🔹 NEWS TABLE -->
+<div id="newsTablesWrap">
+  <h3>Fetched News</h3>
+  <table id="newsTable"></table>
+
+  <h3>Selected News</h3>
+  <table id="selectedTable">
+    <tr><th>#</th><th>News Title</th><th>Action</th></tr>
+  </table>
+</div>
+
+<!-- 🔹 PROGRESS -->
+<div class="progress">
+  <div id="bar" class="progress-bar"></div>
+</div>
+
+<p id="status"></p>
+
+<!-- 🔹 OUTPUT -->
+<h3>Generated Videos</h3>
+<table id="videoTable"></table>
+
+</div>
+
+<!-- 🔹 POPUP -->
+<div id="popup" class="popup">
+  <div style="background:white;padding:20px;position:relative;max-height:90vh;overflow:auto;">
+    <button onclick="closePopup()" style="position:absolute;top:10px;right:10px;">✕</button>
+    <video id="popupVideo" controls></video>
+  </div>
+</div>
+
+<script>
+
+let currentNews=[];
+let selectedNews=[];
+
+
+function onTypeChange(){
+
+let type=document.getElementById("type").value;
+
+document.getElementById("newsTable").style.display="none";
+document.getElementById("selectedTable").style.display="none";
+document.getElementById("contentSection").style.display="none";
+document.getElementById("storySection").style.display="none";
+
+if(type==="news"){
+    document.getElementById("newsTable").style.display="table";
+    document.getElementById("selectedTable").style.display="table";
+}
+else if(type==="content"){
+    document.getElementById("contentSection").style.display="block";
+}
+else if(type==="story"){
+    document.getElementById("storySection").style.display="block";
+}
+}
+
+// ---------------- LOAD NEWS ----------------
+function loadNews(){
+
+let count=document.getElementById("count").value;
+let category=document.getElementById("category").value;
+
+fetch(`/news?count=${count}&category=${category}`)
+.then(r=>r.json())
+.then(d=>{
+
+currentNews=d.news;
+
+let table=document.getElementById("newsTable");
+table.innerHTML="<tr><th>Select</th><th>#</th><th>News Title</th></tr>";
+
+d.news.forEach((n,i)=>{
+let row=table.insertRow();
+
+let checkbox=document.createElement("input");
+checkbox.type="checkbox";
+
+// ✅ keep checked if already selected
+checkbox.checked = selectedNews.includes(n);
+
+checkbox.onchange=function(){
+    toggleSelection(n, checkbox.checked);
+};
+
+row.insertCell(0).appendChild(checkbox);
+row.insertCell(1).innerText=i+1;
+row.insertCell(2).innerText=n;
+});
+
+});
+
+}
+
+// ---------------- TOGGLE SELECTION ----------------
+function toggleSelection(news, isChecked){
+
+let table=document.getElementById("selectedTable");
+
+if(isChecked){
+
+    if(!selectedNews.includes(news)){
+        selectedNews.push(news);
+
+        let row=table.insertRow();
+        row.setAttribute("data-news", news);
+
+        row.insertCell(0).innerText=selectedNews.length;
+        row.insertCell(1).innerText=news;
+
+        // 🔥 DELETE BUTTON
+        let btn=document.createElement("button");
+        btn.innerText="❌";
+        btn.style.background="red";
+
+        btn.onclick=function(){
+            removeSelected(news);
+        };
+
+        row.insertCell(2).appendChild(btn);
+    }
+
+} else {
+    removeSelected(news);
+}
+
+}
+
+// ---------------- REMOVE SELECTED ----------------
+function removeSelected(news){
+
+// remove from array
+selectedNews = selectedNews.filter(n => n !== news);
+
+// remove from table
+let rows = document.querySelectorAll("#selectedTable tr");
+
+rows.forEach(r=>{
+    if(r.getAttribute("data-news") === news){
+        r.remove();
+    }
+});
+
+// uncheck checkbox in main table
+let checkboxes = document.querySelectorAll("#newsTable input[type='checkbox']");
+
+checkboxes.forEach(cb=>{
+    let row = cb.closest("tr");
+    let text = row.cells[2].innerText;
+
+    if(text === news){
+        cb.checked = false;
+    }
+});
+
+updateSelectedTable();
+}
+
+// ---------------- REINDEX ----------------
+function updateSelectedTable(){
+
+let table=document.getElementById("selectedTable");
+
+let rows=table.querySelectorAll("tr");
+
+rows.forEach((row,index)=>{
+    if(index===0) return;
+    row.cells[0].innerText=index;
+});
+
+}
+
+// ---------------- GENERATE ----------------
+function generate(){
+
+let type=document.getElementById("type").value;
+let format=document.getElementById("format").value;
+let aiOnly=document.getElementById("aiOnly").checked;
+
+// ---------------- NEWS ----------------
+if(type==="news"){
+
+    let newsToSend = selectedNews.length > 0 ? selectedNews : currentNews;
+
+    fetch("/generate",{
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({
+            type:"news",
+            news:newsToSend,
+            format:format,
+            ai_only: aiOnly
+        })
+    });
+
+}
+
+// ---------------- CONTENT ----------------
+else if(type==="content"){
+
+    let content=document.getElementById("contentText").value;
+
+    if(!content){
+        alert("Please enter content");
+        return;
+    }
+
+    fetch("/generate-content",{
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({
+            type:"content",
+            content:content,
+            format:format
+        })
+    });
+
+}
+
+// ---------------- STORY ----------------
+else if(type==="story"){
+
+    let files=document.getElementById("storyImages").files;
+
+    if(files.length===0){
+        alert("Upload at least 1 image");
+        return;
+    }
+
+    let formData=new FormData();
+
+    for(let f of files){
+        formData.append("images",f);
+    }
+
+    formData.append("format",format);
+
+    fetch("/generate-story",{
+        method:"POST",
+        body:formData
+    });
+
+}
+
+checkProgress();
+}
+
+// ---------------- PROGRESS ----------------
+function checkProgress(){
+
+let interval=setInterval(()=>{
+
+fetch("/progress")
+.then(r=>r.json())
+.then(d=>{
+
+document.getElementById("bar").style.width=d.progress+"%";
+document.getElementById("status").innerText=d.status;
+
+if(d.status==="completed"){
+
+clearInterval(interval);
+
+let table=document.getElementById("videoTable");
+
+table.innerHTML=
+"<tr>\
+<th>#</th>\
+<th>News</th>\
+<th>Title</th>\
+<th>Description</th>\
+<th>Images Used</th>\
+<th>Preview</th>\
+<th>Folder</th>\
+<th>Play</th>\
+<th>Upload</th>\
+</tr>";
+
+d.videos.forEach((v,i)=>{
+
+let row=table.insertRow();
+
+row.insertCell(0).innerText=i+1;
+row.insertCell(1).innerText=v.news;
+row.insertCell(2).innerText=v.title;
+row.insertCell(3).innerText=v.description;
+
+row.insertCell(4).innerHTML=`<div class="imagesUsed">${v.images}</div>`;
+row.insertCell(5).innerHTML=`<video src="/video?path=${v.video}"></video>`;
+row.insertCell(6).innerHTML=`<button onclick="openFolder('${v.folder}')">Open</button>`;
+row.insertCell(7).innerHTML=`<button onclick="playVideo('${v.video}')">Play</button>`;
+
+let uploadCell=row.insertCell(8);
+let btn=document.createElement("button");
+btn.innerText="Upload";
+
+btn.onclick=function(){
+    btn.disabled=true;
+    btn.innerText="Uploading...";
+    uploadYoutube(v.video,v.title,v.description);
+};
+
+uploadCell.appendChild(btn);
+
+});
+
+}
+
+});
+
+},1500);
+}
+
+// ---------------- OTHER ----------------
+function uploadYoutube(path,title,description){
+
+fetch("/upload_youtube",{
+method:"POST",
+headers:{"Content-Type":"application/json"},
+body:JSON.stringify({
+video:path,
+title:title,
+description:description
+})
+})
+.then(r=>r.json())
+.then(d=>{
+alert("Upload Status: "+d.status);
+});
+
+}
+
+function playVideo(path){
+document.getElementById("popup").style.display="flex";
+document.getElementById("popupVideo").src="/video?path="+path;
+}
+
+function closePopup(){
+document.getElementById("popup").style.display="none";
+}
+
+function openFolder(path){
+fetch("/open_folder?path="+encodeURIComponent(path));
+}
+
+window.onload=loadNews;
+
+</script>
+
+</body>
+</html>

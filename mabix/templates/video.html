@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon %}
+{% block title %}Video{% endblock %}
+{% block crumb %}Video Library{% endblock %}
+{% block content %}
+<div id="vp" data-id="{{ video_id }}" data-type="{{ video_type }}">
+  <div class="page-head">
+    <div style="min-width:0">
+      <div class="row" id="head-badges"></div>
+      <h1 id="v-title" style="margin-top:8px">Loading…</h1>
+      <p class="subtle" id="v-sub"></p>
+    </div>
+    <div class="row" id="head-actions"></div>
+  </div>
+
+  <ol class="steps" id="steps" hidden></ol>
+  <div id="job-banner"></div>
+
+  <div class="grid grid-3">
+    <div class="span-2 stack">
+      <div class="card" id="player-card" hidden><div class="card-body"><div class="player"><video id="player" controls playsinline preload="metadata"></video></div></div></div>
+
+      <div class="card" id="script-card" hidden>
+        <div class="card-head">
+          <div><h2>Script & scenes</h2><p class="subtle">Edit narration and visual prompts, then render. Changing a visual prompt regenerates that scene's AI video.</p></div>
+        </div>
+        <div class="card-body stack">
+          <div class="field"><label for="s-title">Title</label><input type="text" id="s-title" maxlength="200"></div>
+          <div class="field"><label for="s-desc">Description</label><textarea id="s-desc" rows="3"></textarea></div>
+          <div class="field" id="chars-field"><label for="s-chars">Characters <span class="subtle">(kept consistent across scenes)</span></label><textarea id="s-chars" rows="2"></textarea></div>
+        </div>
+        <div id="scenes"></div>
+        <div class="card-body row" style="border-top:1px solid var(--border)">
+          <button class="btn sm" id="add-scene">{{ icon('plus', 'sm') }} Add scene</button>
+          <span class="spacer"></span>
+          <span class="subtle" id="dirty-note" hidden>Unsaved changes</span>
+          <button class="btn" id="save-script">{{ icon('check', 'sm') }} Save</button>
+        </div>
+        <div class="card-body row" style="border-top:1px solid var(--border);background:var(--surface-2);border-radius:0 0 var(--radius) var(--radius)">
+          <button class="btn" id="regen-script">{{ icon('refresh', 'sm') }} Rewrite script</button>
+          <button class="btn" id="storyboard">{{ icon('layers', 'sm') }} Generate storyboard</button>
+          <span class="spacer"></span>
+          <button class="btn primary" id="render">{{ icon('film', 'sm') }} Generate AI video</button>
+        </div>
+      </div>
+    </div>
+
+    <aside class="stack">
+      <div class="card">
+        <div class="card-head"><h2>Details</h2><button class="btn ghost sm" id="edit-meta">{{ icon('edit', 'sm') }} Edit</button></div>
+        <div class="card-body"><dl id="details" style="margin:0;display:grid;grid-template-columns:auto 1fr;gap:8px 14px;font-size:13.5px"></dl></div>
+      </div>
+      <div class="card" id="publish-card">
+        <div class="card-head"><h2>Publishing</h2></div>
+        <div class="card-body" id="publish-body"></div>
+      </div>
+      <div class="card">
+        <div class="card-head"><h2>Jobs</h2><a class="subtle" href="{{ url_for('pages.history_page') }}">History →</a></div>
+        <ul class="list" id="jobs"></ul>
+      </div>
+    </aside>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='js/video.js') }}?v={{ app_version }}"></script>{% endblock %}
