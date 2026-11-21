@@ -59,7 +59,7 @@ def detect(force=False):
         llm_ok, llm_detail = llm.is_available()
         gpu = _gpu()
         engine = models.video_engine()
-        feat = "WanPipeline" if engine == "wan" else "AnimateDiffPipeline"
+        feat = "WanPipeline" if engine in models.WAN_SPECS else "AnimateDiffPipeline"
         t2v_ok, t2v_detail = _diffusers(feat)
         svd_id = models.svd_model_id()
         svd_ok, svd_detail = _diffusers("StableVideoDiffusionPipeline") if svd_id else (False, "not configured")

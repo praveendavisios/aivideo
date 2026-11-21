@@ -481,7 +481,8 @@ def music_delete(name):
 # ------------------------------------------------------------- settings
 MODEL_KEYS = {"ollama": "Ollama model", "ollama_host": "Ollama host", "sd": "Stable Diffusion model",
               "animatediff": "AnimateDiff motion adapter", "video_engine": "Text-to-video engine",
-              "wan": "Wan model", "svd": "Stable Video Diffusion model"}
+              "wan": "Wan 2.1 model", "wan22": "Wan 2.2 model", "svd": "Stable Video Diffusion model",
+              "stylized": "Stylized checkpoint", "quality": "Quality"}
 
 
 def _settings_payload():
@@ -492,7 +493,8 @@ def _settings_payload():
         "models": {k: models.model_setting(k, default) for k, default in (
             ("ollama", Config.OLLAMA_MODEL), ("ollama_host", Config.OLLAMA_HOST), ("sd", Config.SD_MODEL),
             ("animatediff", Config.ANIMATEDIFF_ADAPTER), ("video_engine", "animatediff"),
-            ("wan", models.WAN_DEFAULT), ("svd", ""))},
+            ("wan", models.WAN_DEFAULT), ("wan22", models.WAN22_DEFAULT), ("svd", ""),
+            ("stylized", studio.STYLIZED_DEFAULT), ("quality", "balanced"))},
         "video_engines": models.VIDEO_ENGINES,
         "defaults": studio.build_config("short", {}, repo.get_setting("defaults", {})),
         "preferences": repo.get_setting("preferences", {"theme": "system", "page_size": 12}),
@@ -522,6 +524,8 @@ def settings_put(section):
                     return err(f"{MODEL_KEYS[k]}: invalid value")
                 if k == "video_engine" and val not in models.VIDEO_ENGINES:
                     return err("Unknown video engine")
+                if k == "quality" and val not in models.QUALITY:
+                    return err("Unknown quality preset")
                 repo.set_setting(f"model.{k}", val)
                 current[k] = val
         repo.set_setting("model_overrides", current)

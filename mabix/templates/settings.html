@@ -27,12 +27,19 @@
     <div class="card-body grid grid-2">
       <form id="models-form" class="stack">
         <div class="field"><label for="m-video_engine">Text-to-video engine</label><select id="m-video_engine" name="video_engine"></select>
-          <span class="hint">Wan 2.1 1.3B fits comfortably in an RTX 5080's 16 GB and gives much better motion. First use downloads the model (~20 GB incl. text encoder).</span></div>
-        <div class="field"><label for="m-wan">Wan model (Hugging Face id or local path)</label><input type="text" id="m-wan" name="wan"></div>
+          <span class="hint">On an RTX 5080 use Wan 2.2 5B for the best quality (720p, 24 fps) or Wan 2.1 1.3B for faster renders. First use downloads the model (tens of GB).</span></div>
+        <div class="field"><label for="m-quality">Quality</label>
+          <select id="m-quality" name="quality"><option value="fast">Fast — fewer diffusion steps</option><option value="balanced">Balanced</option><option value="high">High — slowest, sharpest</option></select></div>
+        <div class="form-grid">
+          <div class="field"><label for="m-wan22">Wan 2.2 model</label><input type="text" id="m-wan22" name="wan22"></div>
+          <div class="field"><label for="m-wan">Wan 2.1 model</label><input type="text" id="m-wan" name="wan"></div>
+        </div>
+        <div class="field"><label for="m-stylized">Anime / cartoon checkpoint (SD 1.5)</label><input type="text" id="m-stylized" name="stylized">
+          <span class="hint">Used for keyframes and AnimateDiff when the style is anime, cartoon, 2D, storybook or whiteboard. Any SD 1.5 model in diffusers format works — for pure anime, use an anime checkpoint you like.</span></div>
         <div class="field"><label for="m-svd">Stable Video Diffusion model <span class="subtle">(image-to-video, optional)</span></label>
           <input type="text" id="m-svd" name="svd" placeholder="stabilityai/stable-video-diffusion-img2vid-xt">
           <span class="hint">Leave empty to disable. Needs accepting the model licence on Hugging Face and logging in with <span class="mono">huggingface-cli login</span>.</span></div>
-        <div class="field"><label for="m-sd">Stable Diffusion checkpoint (keyframes & news images)</label><input type="text" id="m-sd" name="sd"></div>
+        <div class="field"><label for="m-sd">Photoreal checkpoint (realistic styles & news images)</label><input type="text" id="m-sd" name="sd"></div>
         <div class="field"><label for="m-animatediff">AnimateDiff motion adapter</label><input type="text" id="m-animatediff" name="animatediff"></div>
         <div class="form-grid">
           <div class="field"><label for="m-ollama">Ollama model</label><input type="text" id="m-ollama" name="ollama"></div>

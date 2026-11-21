@@ -71,8 +71,10 @@ def fake_ai(monkeypatch, tmp_path):
     calls = {"clips": 0}
     monkeypatch.setattr(llm, "chat_json", lambda prompt, retries=2: plan)
 
-    def clip(prompt, out, negative="", seed=0, aspect="9:16"):
+    def clip(prompt, out, negative="", seed=0, aspect="9:16", duration=None, base_model=None):
         calls["clips"] += 1
+        calls.setdefault("log", []).append({"prompt": prompt, "negative": negative, "duration": duration,
+                                            "base_model": base_model})
         return str(make_mp4(out, 1.0))
     monkeypatch.setattr(models, "generate_video_clip", clip)
     monkeypatch.setattr(models, "video_engine", lambda: "animatediff")
@@ -363,3 +365,40 @@ def test_render_with_music_and_captions(tmp_path, fake_ai):
     from mabix.media import probe
     info = probe(str(out))
     assert (info["width"], info["height"]) == (1280, 720) and info["duration"] > 2
+
+
+def test_anime_style_uses_stylized_checkpoint_and_narration_length(client, auth, fake_ai):
+    r = client.post("/api/studio/short", headers=auth, content_type="multipart/form-data",
+                    data={"prompt": "A samurai cat at sunset", "style": "anime", "review": "0", "resolution": "720p"})
+    run_jobs()
+    assert client.get(f"/api/videos/{r.json['video_id']}").json["video"]["status"] == "completed"
+    call = fake_ai["log"][0]
+    assert call["base_model"] == "Lykon/dreamshaper-8"          # not the photoreal checkpoint
+    assert "photorealistic" in call["negative"]                 # pushed away from photo look
+    assert "anime key visual" in call["prompt"]
+    assert call["duration"] and call["duration"] > 1            # clip sized to its narration
+
+
+def test_realistic_style_keeps_default_checkpoint(client, auth, fake_ai):
+    client.post("/api/studio/short", headers=auth, content_type="multipart/form-data",
+                data={"prompt": "Ocean documentary", "style": "realistic", "review": "0", "resolution": "720p"})
+    run_jobs()
+    call = fake_ai["log"][0]
+    assert call["base_model"] is None and "anime" in call["negative"]
+
+
+def test_wan_frame_counts():
+    from mabix.pipelines.models import wan_frames
+    assert wan_frames(5, 24, 121) == 121
+    assert wan_frames(3, 24, 121) == 73 and (73 - 1) % 4 == 0
+    assert wan_frames(30, 16, 81) == 81
+    assert wan_frames(0.5, 16, 81) == 33
+
+
+def test_quality_and_engine_settings(client, auth):
+    r = client.put("/api/settings/models", json={"video_engine": "wan22", "quality": "high",
+                                                  "stylized": "someone/anime-model"}, headers=auth)
+    assert r.status_code == 200
+    m = r.json["models"]
+    assert m["video_engine"] == "wan22" and m["quality"] == "high" and m["stylized"] == "someone/anime-model"
+    assert client.put("/api/settings/models", json={"quality": "ultra"}, headers=auth).status_code == 400
