@@ -1,10 +1,11 @@
 {% extends "base.html" %}
-{% from "_macros.html" import icon %}
+{% from "_macros.html" import icon, robocat_face %}
 {% block title %}Dashboard{% endblock %}
 {% block content %}
 <section class="hero" style="margin-bottom:20px">
-  <h1>Welcome back, {{ admin_name }}</h1>
-  <p>Generate AI shorts, animations, stories, explainers and news videos — or upload your own and publish them.</p>
+  <div><h1>Welcome back, {{ admin_name }}</h1>
+  <p>{% if mabcat_enabled %}Run Mab Cat — manage users and centers, train the AI teacher on your curriculum, and create learning videos — all from one place.{% else %}Generate AI shorts, animations, stories, explainers and news videos — or upload your own and publish them.{% endif %}</p></div>
+  {{ robocat_face() }}
 </section>
 
 {% if mabcat_enabled and user_role == 'admin' %}

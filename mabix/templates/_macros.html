@@ -1,1 +1,39 @@
 {% macro icon(name, cls='') %}<svg class="icon {{ cls }}" aria-hidden="true"><use href="#i-{{ name }}"/></svg>{% endmacro %}
+
+{% macro robocat_face(cls='', mood='happy', attrs='') %}<svg class="rc-face {{ cls }}" viewBox="0 0 120 80" aria-hidden="true" {{ attrs|safe }}>
+  <rect x="2" y="2" width="116" height="76" rx="18" fill="#1c1d72" stroke="#0b0d2b" stroke-width="3"/>
+  <path d="M6 22 Q6 6 22 6 H98 Q110 6 113 16 Q70 10 6 40 Z" fill="#ffffff" opacity=".07"/>
+  <path d="M26 24 q10 -6 20 0 M74 24 q10 -6 20 0" stroke="#7fe3ff" stroke-width="2.6" fill="none" stroke-linecap="round"/>
+  <g class="rc-eyes"><circle cx="36" cy="40" r="13" fill="#bdf3ff"/><circle cx="36" cy="41" r="10.5" fill="#3140c9"/><circle cx="40" cy="36" r="3.6" fill="#fff"/>
+  <circle cx="84" cy="40" r="13" fill="#bdf3ff"/><circle cx="84" cy="41" r="10.5" fill="#3140c9"/><circle cx="88" cy="36" r="3.6" fill="#fff"/></g>
+  <path d="M56 50 l4 4 l4 -4 z" fill="#9fdcff"/>
+  {% if mood == 'happy' %}<path d="M52 56 q4 6 8 0 q4 6 8 0" stroke="#e8f6ff" stroke-width="2.2" fill="#f49bc4" stroke-linejoin="round"/>{% else %}<path d="M53 57 q7 4 14 0" stroke="#e8f6ff" stroke-width="2.2" fill="none" stroke-linecap="round"/>{% endif %}
+  <path d="M10 46 h16 M10 53 h15 M94 46 h16 M95 53 h15" stroke="#9fdcff" stroke-width="1.8" stroke-linecap="round" opacity=".8"/>
+</svg>{% endmacro %}
+
+{% macro robocat(cls='') %}<svg class="rc-robot {{ cls }}" viewBox="0 0 400 430" role="img" aria-label="MabixAI RoboCat">
+  <defs>
+    <linearGradient id="rcShell" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#e3e9f7"/></linearGradient>
+    <linearGradient id="rcEar" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#c26bff"/><stop offset="1" stop-color="#3b5bff"/></linearGradient>
+    <linearGradient id="rcBlue" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#2a4fd6"/><stop offset="1" stop-color="#1c3aa8"/></linearGradient>
+    <linearGradient id="rcTail" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#2a4fd6"/><stop offset="1" stop-color="#b56cff"/></linearGradient>
+    <filter id="rcGlow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="6"/></filter>
+  </defs>
+  <ellipse cx="200" cy="408" rx="150" ry="14" fill="#22d3ee" opacity=".55" filter="url(#rcGlow)"/>
+  <path d="M318 318 q40 -30 34 -80" stroke="url(#rcTail)" stroke-width="26" fill="none" stroke-linecap="round"/>
+  <ellipse cx="352" cy="232" rx="17" ry="24" fill="#b98bff" opacity=".85" filter="url(#rcGlow)"/><ellipse cx="352" cy="234" rx="13" ry="19" fill="#c9a6ff"/>
+  <rect x="78" y="250" width="244" height="150" rx="60" fill="url(#rcBlue)"/>
+  <rect x="104" y="258" width="192" height="142" rx="52" fill="url(#rcShell)"/>
+  <rect x="150" y="300" width="100" height="90" rx="40" fill="#eef2fb"/>
+  <rect x="160" y="350" width="80" height="22" rx="11" fill="#141a45"/>
+  <text x="200" y="366" text-anchor="middle" font-family="Inter,sans-serif" font-size="12" font-weight="800" fill="#5ce1ff">MabixAI</text>
+  <path d="M96 400 a28 24 0 0 1 56 0 z M248 400 a28 24 0 0 1 56 0 z" fill="#e7defd"/>
+  <rect x="96" y="398" width="208" height="6" rx="3" fill="#22d3ee" opacity=".9"/>
+  <path d="M78 120 L104 22 Q110 10 120 20 L176 76 Z" fill="url(#rcShell)"/><path d="M98 104 L112 44 L156 80 Z" fill="url(#rcEar)"/>
+  <path d="M322 120 L296 22 Q290 10 280 20 L224 76 Z" fill="url(#rcShell)"/><path d="M302 104 L288 44 L244 80 Z" fill="url(#rcEar)"/>
+  <rect x="44" y="64" width="312" height="214" rx="86" fill="url(#rcShell)" stroke="#d8def0" stroke-width="2"/>
+  <rect x="176" y="76" width="48" height="9" rx="4.5" fill="#22d3ee" filter="url(#rcGlow)"/><rect x="176" y="76" width="48" height="9" rx="4.5" fill="#7ff0ff"/>
+  <g fill="#3a3f5c"><circle cx="128" cy="84" r="3"/><circle cx="136" cy="90" r="3"/><circle cx="128" cy="94" r="2.6"/><circle cx="272" cy="84" r="3"/><circle cx="264" cy="90" r="3"/><circle cx="272" cy="94" r="2.6"/></g>
+  <g fill="#c9d0e4">{% for y in [150, 166, 182, 198] %}{% for x in [56, 68] %}<circle cx="{{ x }}" cy="{{ y }}" r="3"/><circle cx="{{ 400 - x }}" cy="{{ y }}" r="3"/>{% endfor %}{% endfor %}</g>
+  {{ robocat_face('', 'happy', 'x="86" y="100" width="228" height="152"') }}
+</svg>{% endmacro %}
