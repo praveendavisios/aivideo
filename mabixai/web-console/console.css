@@ -35,7 +35,7 @@ button.sm{padding:4px 9px;font-size:12px}
 .log .in{color:var(--info)}.log .out{color:var(--good)}.log .err{color:var(--bad)}.log .bin{color:var(--faint)}
 .meter{height:10px;background:var(--panel2);border-radius:99px;overflow:hidden;border:1px solid var(--line)}.meter i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--good),var(--warn),var(--bad));transition:width .08s}
 .robot-wrap{background:#0b0e1d;padding:10px;border-radius:10px}
-#robot{width:100%;aspect-ratio:800/480;display:block;border-radius:6px}
+#robot{width:100%;max-height:360px;display:block}
 .tree{list-style:none;padding-left:14px;margin:0}.tree li{margin:2px 0}.tree .node{cursor:pointer;padding:2px 6px;border-radius:6px;display:inline-block}.tree .node:hover,.tree .node.on{background:var(--brandsoft);color:var(--brand)}
 table.t{width:100%;border-collapse:collapse;font-size:13px}table.t th,table.t td{text-align:left;padding:7px 9px;border-bottom:1px solid var(--line);vertical-align:top}table.t th{font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--faint)}
 .hidden{display:none!important}.imgs img{max-width:100%;border-radius:8px;border:1px solid var(--line)}
@@ -65,3 +65,8 @@ input,select,textarea{border-radius:14px}.card{box-shadow:0 1px 2px rgba(30,50,1
 @keyframes mcbob{50%{transform:translateY(-6px)}}@keyframes mcblink{0%,94%,100%{transform:scaleY(1)}96%{transform:scaleY(.1)}}
 @media (prefers-reduced-motion:reduce){.chat-welcome .mc-robot,.mc-eyes{animation:none}}
 .brand-logo{height:30px;width:auto;vertical-align:middle}
+
+/* robot simulator stage */
+.robot-wrap{background:radial-gradient(70% 60% at 50% 30%,rgba(34,211,238,.25),transparent 60%),linear-gradient(160deg,#141653,#1d2a8f 70%,#2a3fc4)}
+@keyframes rbwag{50%{transform:rotate(-12deg)}}
+@media (prefers-reduced-motion:reduce){#tail{animation:none!important}}
