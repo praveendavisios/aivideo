@@ -1,4 +1,4 @@
-{% from "_macros.html" import icon %}<!doctype html>
+{% from "_macros.html" import icon, robocat_face %}<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -20,8 +20,8 @@
 <div class="app">
   <aside class="sidebar" id="sidebar" aria-label="Main navigation">
     <a class="brand" href="{{ url_for('pages.home_for_role') }}" aria-label="Mabix AI home">
-      <img src="{{ logo_url }}" alt="Mabix AI" onerror="this.remove();document.getElementById('wm').hidden=false">
-      <span class="wordmark" id="wm" hidden>Mabix <b>AI</b></span>
+      {{ robocat_face() }}
+      <span class="wordmark">Mabix<b>AI</b><small>RoboCat studio</small></span>
     </a>
     {% set R = user_role %}{% set STUDIO = R in ('admin', 'teacher') %}{% set MC = mabcat_enabled %}
     <nav class="nav">

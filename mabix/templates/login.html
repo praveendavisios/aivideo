@@ -1,4 +1,4 @@
-{% from "_macros.html" import icon %}<!doctype html>
+{% from "_macros.html" import icon, robocat, robocat_face %}<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -13,38 +13,33 @@
 {% include "_icons.html" %}
 <div class="auth">
   <section class="auth-art" aria-hidden="true">
-    <div class="brand" style="padding:0">
-      <img src="{{ logo_url }}" alt="" style="height:40px;filter:brightness(0) invert(1)" onerror="this.remove()">
-      <span class="wordmark" style="color:#fff">Mabix AI</span>
+    <div class="brand" style="padding:0;color:#fff">
+      {{ robocat_face() }}<span class="wordmark" style="color:#fff">Mabix<b>AI</b><small style="color:#b9c4ff">RoboCat</small></span>
     </div>
+    {{ robocat() }}
     <div>
-      <h1>Create, render and publish AI videos from one studio.</h1>
-      <p>Shorts, animations, stories, explainers and news videos — scripted, voiced, captioned and rendered on your own GPU.</p>
+      <h1>Your AI learning companion — and the studio behind it.</h1>
+      <p>Train Mab Cat on your curriculum, manage students and centers, and create AI learning videos.</p>
     </div>
     <div class="feats">
-      <div>{{ icon('zap', 'sm') }} AI Short Videos</div>
-      <div>{{ icon('film', 'sm') }} AI Animation</div>
-      <div>{{ icon('book', 'sm') }} AI Stories</div>
-      <div>{{ icon('help', 'sm') }} Short Answers</div>
-      <div>{{ icon('news', 'sm') }} News Videos</div>
-      <div>{{ icon('send', 'sm') }} YouTube Publishing</div>
+      <div>{{ icon('mic', 'sm') }} AI Voice Chat</div>
+      <div>{{ icon('book', 'sm') }} AI Tutor from your curriculum</div>
+      <div>{{ icon('film', 'sm') }} AI Video Studio</div>
+      <div>{{ icon('user', 'sm') }} Teacher & parent dashboards</div>
     </div>
   </section>
   <section class="auth-form">
     <div class="auth-card">
-      <div class="brand">
-        <img src="{{ logo_url }}" alt="Mabix AI" onerror="this.remove();document.getElementById('wm').hidden=false">
-        <span class="wordmark" id="wm" hidden>Mabix <b>AI</b></span>
-      </div>
+      <div class="brand" style="padding:0 0 24px">{{ robocat_face() }}<span class="wordmark">Mabix<b>AI</b><small>RoboCat studio</small></span></div>
       <h2>Welcome back</h2>
-      <p class="muted">Sign in to your Mabix AI studio.</p>
+      <p class="muted">Admins, teachers and parents sign in here.</p>
       {% with msgs = get_flashed_messages() %}{% for m in msgs %}
       <div class="notice info" style="margin-top:18px">{{ icon('info') }}<div>{{ m }}</div></div>{% endfor %}{% endwith %}
       {% if error %}<div class="notice bad" role="alert" style="margin-top:18px">{{ icon('alert') }}<div>{{ error }}</div></div>{% endif %}
       <form method="post" autocomplete="on">
         <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
         <input type="hidden" name="next" value="{{ next }}">
-        <div class="field"><label for="username">Username</label>
+        <div class="field"><label for="username">Email or username</label>
           <input type="text" id="username" name="username" autocomplete="username" required autofocus></div>
         <div class="field"><label for="password">Password</label>
           <div class="pw"><input type="password" id="password" name="password" autocomplete="current-password" required>
