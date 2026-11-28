@@ -91,6 +91,7 @@ def create_app(mount_studio=True, database_url=None):
         try:
             from a2wsgi import WSGIMiddleware
             from mabix import create_app as create_studio
+            os.environ["MABCAT_MOUNTED"] = "1"  # studio login also signs in to RoboCat (one account system)
             app.mount("/", WSGIMiddleware(create_studio()))
         except Exception as exc:  # the API still works without the studio
             log.warning("Video studio not mounted: %s", exc)

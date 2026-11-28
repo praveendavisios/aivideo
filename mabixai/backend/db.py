@@ -38,7 +38,22 @@ def configure(url=None):
     SessionLocal.configure(bind=_engine)
     from . import models  # noqa: F401  (register tables)
     Base.metadata.create_all(_engine)
+    _add_missing_columns()
     return _engine
+
+
+def _add_missing_columns():
+    """Lightweight forward migration: add nullable columns introduced after a database was created."""
+    from sqlalchemy import inspect, text
+    insp = inspect(_engine)
+    with _engine.begin() as conn:
+        for table in Base.metadata.sorted_tables:
+            if not insp.has_table(table.name):
+                continue
+            have = {c["name"] for c in insp.get_columns(table.name)}
+            for col in table.columns:
+                if col.name not in have and col.nullable:
+                    conn.execute(text(f'ALTER TABLE {table.name} ADD COLUMN {col.name} {col.type.compile(_engine.dialect)}'))
 
 
 def engine():

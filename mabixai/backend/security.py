@@ -101,10 +101,13 @@ def visible_student_ids(db, user):
         return None  # all
     if user.role == "parent":
         return set(db.scalars(select(Student.id).where(Student.parent_id == user.id)))
-    # teacher: students in their classes
+    # teacher: students in their classes, plus students of their center
     q = select(ClassMember.student_id).join(ClassGroup, ClassGroup.id == ClassMember.class_id) \
         .where(ClassGroup.teacher_id == user.id)
-    return set(db.scalars(q))
+    ids = set(db.scalars(q))
+    if user.center_id:
+        ids |= set(db.scalars(select(Student.id).where(Student.center_id == user.center_id)))
+    return ids
 
 
 def get_student_for(db, user, student_id, write=False):

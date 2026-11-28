@@ -21,7 +21,8 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 def _cur_out(c):
     return {"id": c.id, "title": c.title, "subject": c.subject, "grade": c.grade, "language": c.language,
-            "status": c.status, "error": c.error, "created_at": c.created_at,
+            "status": c.status, "error": c.error, "created_at": c.created_at, "center_id": c.center_id,
+            "owner_id": c.owner_id,
             "documents": [{"id": d.id, "filename": d.filename, "kind": d.kind, "pages": d.pages, "status": d.status,
                            "method": d.method, "error": d.error} for d in c.documents]}
 
@@ -30,7 +31,10 @@ def readable_curricula(db, user):
     if user.role == "admin":
         return None
     if user.role == "teacher":
-        return set(db.scalars(select(Curriculum.id).where(Curriculum.owner_id == user.id)))
+        ids = set(db.scalars(select(Curriculum.id).where(Curriculum.owner_id == user.id)))
+        if user.center_id:
+            ids |= set(db.scalars(select(Curriculum.id).where(Curriculum.center_id == user.center_id)))
+        return ids
     ids = visible_student_ids(db, user) or {""}
     return set(db.scalars(select(Assignment.curriculum_id).where(Assignment.student_id.in_(ids))))
 
@@ -79,10 +83,11 @@ async def _save_upload(f: UploadFile, cur_id):
 
 @router.post("/curricula", tags=["curriculum"])
 async def upload_curriculum(title: str = Form(...), subject: str = Form(""), grade: str = Form(""),
-                            language: str = Form("en"), files: list[UploadFile] = File(...),
+                            language: str = Form("en"), center_id: str | None = Form(None), files: list[UploadFile] = File(...),
                             db: Session = Depends(get_db), user=Depends(require("teacher", "parent"))):
     """Upload one or more documents (PDF, DOCX, PPTX, TXT, images). Processing runs in the background."""
-    c = Curriculum(owner_id=user.id, title=title[:200], subject=subject[:100], grade=grade[:20], language=language[:10])
+    c = Curriculum(owner_id=user.id, title=title[:200], subject=subject[:100], grade=grade[:20], language=language[:10],
+                   center_id=center_id or user.center_id)
     db.add(c)
     db.flush()
     for f in files[:20]:

@@ -5,7 +5,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from ..db import get_db, utcnow
-from ..models import ClassGroup, ClassMember, Device, Student, User
+from ..models import Center, ClassGroup, ClassMember, Device, Student, User
 from ..security import (ROLES, audit, authenticate, current_user, get_student_for, hash_password, issue_token,
                         new_device_token, require, revoke_token, sha256, visible_student_ids)
 from ..teaching import student_engine
@@ -24,6 +24,22 @@ class UserIn(BaseModel):
     name: str = ""
     role: str
     password: str = Field(min_length=6)
+    center_id: str | None = None
+
+
+class UserEdit(BaseModel):
+    name: str | None = None
+    role: str | None = None
+    center_id: str | None = None
+    active: bool | None = None
+    password: str | None = Field(default=None, min_length=6)
+
+
+class CenterIn(BaseModel):
+    name: str = Field(min_length=2, max_length=200)
+    location: str = ""
+    contact: str = ""
+    active: bool = True
 
 
 class StudentIn(BaseModel):
@@ -34,6 +50,8 @@ class StudentIn(BaseModel):
     subjects: list[str] = []
     persona: str = "friendly"
     daily_limit_minutes: int = Field(default=60, ge=0, le=600)
+    center_id: str | None = None
+    parent_id: str | None = None  # admin only: link the child to a parent account
 
 
 class ConsentIn(BaseModel):
@@ -48,14 +66,15 @@ class DeviceIn(BaseModel):
 
 
 def user_out(u):
-    return {"id": u.id, "email": u.email, "name": u.name, "role": u.role}
+    return {"id": u.id, "email": u.email, "name": u.name, "role": u.role, "center_id": u.center_id,
+            "active": u.active, "created_at": u.created_at}
 
 
 def student_out(s):
     return {"id": s.id, "display_name": s.display_name, "grade": s.grade, "age": s.age, "level": s.level,
             "preferred_language": s.preferred_language, "subjects": s.subjects, "persona": s.persona,
             "consent_learning": s.consent_learning, "consent_audio": s.consent_audio,
-            "daily_limit_minutes": s.daily_limit_minutes}
+            "daily_limit_minutes": s.daily_limit_minutes, "center_id": s.center_id, "parent_id": s.parent_id}
 
 
 # ------------------------------------------------------------------ auth
@@ -95,7 +114,10 @@ def create_user(body: UserIn, db: Session = Depends(get_db), admin=Depends(requi
         raise HTTPException(400, f"role must be one of {ROLES}")
     if db.scalar(select(User).where(User.email == body.email.lower())):
         raise HTTPException(409, "Email already registered")
-    u = User(email=body.email.lower(), name=body.name, role=body.role, password_hash=hash_password(body.password))
+    if body.center_id and not db.get(Center, body.center_id):
+        raise HTTPException(400, "Center not found")
+    u = User(email=body.email.lower(), name=body.name, role=body.role, password_hash=hash_password(body.password),
+             center_id=body.center_id)
     db.add(u)
     audit(db, admin.id, "user.create", u.email, role=body.role)
     db.commit()
@@ -103,8 +125,92 @@ def create_user(body: UserIn, db: Session = Depends(get_db), admin=Depends(requi
 
 
 @router.get("/users", tags=["auth"])
-def list_users(db: Session = Depends(get_db), admin=Depends(require("admin"))):
-    return [user_out(u) for u in db.scalars(select(User))]
+def list_users(role: str | None = None, db: Session = Depends(get_db), user=Depends(require("teacher"))):
+    """Admin: everyone. Teacher: parents/teachers of their own center (to link students)."""
+    q = select(User).order_by(User.created_at.desc())
+    if role:
+        q = q.where(User.role == role)
+    if user.role != "admin":
+        q = q.where(User.center_id == user.center_id) if user.center_id else q.where(User.id == user.id)
+    return [user_out(u) for u in db.scalars(q)]
+
+
+@router.patch("/users/{user_id}", tags=["auth"])
+def edit_user(user_id: str, body: UserEdit, db: Session = Depends(get_db), admin=Depends(require("admin"))):
+    u = db.get(User, user_id)
+    if not u:
+        raise HTTPException(404, "User not found")
+    if body.role is not None:
+        if body.role not in ROLES:
+            raise HTTPException(400, f"role must be one of {ROLES}")
+        if u.id == admin.id and body.role != "admin":
+            raise HTTPException(400, "You cannot remove your own admin role")
+        u.role = body.role
+    if body.active is not None:
+        if u.id == admin.id and not body.active:
+            raise HTTPException(400, "You cannot deactivate yourself")
+        u.active = body.active
+    if body.center_id is not None:
+        if body.center_id and not db.get(Center, body.center_id):
+            raise HTTPException(400, "Center not found")
+        u.center_id = body.center_id or None
+    if body.name is not None:
+        u.name = body.name[:200]
+    if body.password:
+        u.password_hash = hash_password(body.password)
+    audit(db, admin.id, "user.update", u.id, role=u.role, active=u.active, center=u.center_id,
+          password_reset=bool(body.password))
+    db.commit()
+    return user_out(u)
+
+
+# ---------------------------------------------------------------- centers
+def center_out(db, c):
+    return {"id": c.id, "name": c.name, "location": c.location, "contact": c.contact, "active": c.active,
+            "teachers": db.query(User).filter(User.center_id == c.id, User.role == "teacher").count(),
+            "students": db.query(Student).filter(Student.center_id == c.id).count()}
+
+
+@router.get("/centers", tags=["centers"])
+def list_centers(db: Session = Depends(get_db), user=Depends(current_user)):
+    q = select(Center).order_by(Center.name)
+    if user.role != "admin":
+        q = q.where(Center.id == user.center_id)
+    return [center_out(db, c) for c in db.scalars(q)]
+
+
+@router.post("/centers", tags=["centers"])
+def create_center(body: CenterIn, db: Session = Depends(get_db), admin=Depends(require("admin"))):
+    c = Center(**body.model_dump())
+    db.add(c)
+    audit(db, admin.id, "center.create", c.id, name=c.name)
+    db.commit()
+    return center_out(db, c)
+
+
+@router.patch("/centers/{center_id}", tags=["centers"])
+def edit_center(center_id: str, body: CenterIn, db: Session = Depends(get_db), admin=Depends(require("admin"))):
+    c = db.get(Center, center_id)
+    if not c:
+        raise HTTPException(404, "Center not found")
+    for k, v in body.model_dump().items():
+        setattr(c, k, v)
+    audit(db, admin.id, "center.update", c.id)
+    db.commit()
+    return center_out(db, c)
+
+
+@router.delete("/centers/{center_id}", tags=["centers"])
+def delete_center(center_id: str, db: Session = Depends(get_db), admin=Depends(require("admin"))):
+    c = db.get(Center, center_id)
+    if not c:
+        raise HTTPException(404, "Center not found")
+    if db.query(Student).filter(Student.center_id == c.id).count() or db.query(User).filter(User.center_id == c.id).count():
+        raise HTTPException(409, "Move or remove this center's users and students first")
+    db.delete(c)
+    audit(db, admin.id, "center.delete", center_id)
+    db.commit()
+    return {"ok": True}
 
 
 # --------------------------------------------------------------- students
@@ -117,7 +223,17 @@ def list_students(db: Session = Depends(get_db), user=Depends(current_user)):
 
 @router.post("/students", tags=["students"])
 def create_student(body: StudentIn, db: Session = Depends(get_db), user=Depends(require("parent"))):
-    s = Student(parent_id=user.id, **body.model_dump())
+    data = body.model_dump()
+    parent_id = data.pop("parent_id") or user.id
+    if user.role != "admin":
+        parent_id = user.id  # parents can only add their own children
+    else:
+        p = db.get(User, parent_id)
+        if not p or p.role not in ("parent", "admin"):
+            raise HTTPException(400, "parent_id must be a parent account")
+    if data.get("center_id") and not db.get(Center, data["center_id"]):
+        raise HTTPException(400, "Center not found")
+    s = Student(parent_id=parent_id, **data)
     db.add(s)
     audit(db, user.id, "student.create", s.id)
     db.commit()
@@ -127,7 +243,14 @@ def create_student(body: StudentIn, db: Session = Depends(get_db), user=Depends(
 @router.patch("/students/{student_id}", tags=["students"])
 def update_student(student_id: str, body: StudentIn, db: Session = Depends(get_db), user=Depends(current_user)):
     s = get_student_for(db, user, student_id, write=True)
-    for k, v in body.model_dump().items():
+    data = body.model_dump()
+    parent_id = data.pop("parent_id")
+    if user.role == "admin" and parent_id:
+        p = db.get(User, parent_id)
+        if not p or p.role not in ("parent", "admin"):
+            raise HTTPException(400, "parent_id must be a parent account")
+        s.parent_id = parent_id
+    for k, v in data.items():
         setattr(s, k, v)
     audit(db, user.id, "student.update", s.id)
     db.commit()

@@ -15,6 +15,7 @@ bp = Blueprint("api", __name__, url_prefix="/api")
 
 @bp.before_request
 @auth.login_required
+@auth.role_required(*auth.STUDIO_ROLES)
 def _guard():
     return None
 
@@ -573,6 +574,7 @@ media_bp = Blueprint("media", __name__, url_prefix="/media")
 
 @media_bp.before_request
 @auth.login_required
+@auth.role_required(*auth.STUDIO_ROLES)
 def _media_guard():
     return None
 

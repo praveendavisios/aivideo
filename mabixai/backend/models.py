@@ -23,6 +23,16 @@ class TimestampMixin:
     updated_at: Mapped[object] = mapped_column(DateTime, default=utcnow, onupdate=utcnow)
 
 
+class Center(TimestampMixin, Base):
+    """A school / learning centre. Users, students, classes and curricula can belong to one."""
+    __tablename__ = "centers"
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=lambda: uid("ctr"))
+    name: Mapped[str] = mapped_column(String(200))
+    location: Mapped[str] = mapped_column(String(200), default="")
+    contact: Mapped[str] = mapped_column(String(200), default="")
+    active: Mapped[bool] = mapped_column(Boolean, default=True)
+
+
 class User(TimestampMixin, Base):
     __tablename__ = "users"
     id: Mapped[str] = mapped_column(String(32), primary_key=True, default=lambda: uid("usr"))
@@ -31,6 +41,7 @@ class User(TimestampMixin, Base):
     role: Mapped[str] = mapped_column(String(20))  # admin | teacher | parent
     password_hash: Mapped[str] = mapped_column(String(300))
     active: Mapped[bool] = mapped_column(Boolean, default=True)
+    center_id: Mapped[str | None] = mapped_column(String(32), nullable=True, index=True)
 
 
 class ApiToken(Base):
@@ -57,6 +68,7 @@ class Student(TimestampMixin, Base):
     consent_at: Mapped[object | None] = mapped_column(DateTime, nullable=True)
     daily_limit_minutes: Mapped[int] = mapped_column(Integer, default=60)
     level: Mapped[str] = mapped_column(String(20), default="beginner")
+    center_id: Mapped[str | None] = mapped_column(String(32), nullable=True, index=True)
 
 
 class ClassGroup(TimestampMixin, Base):
@@ -65,6 +77,7 @@ class ClassGroup(TimestampMixin, Base):
     teacher_id: Mapped[str] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
     name: Mapped[str] = mapped_column(String(100))
     join_code: Mapped[str] = mapped_column(String(12), unique=True, default=lambda: secrets.token_hex(4).upper())
+    center_id: Mapped[str | None] = mapped_column(String(32), nullable=True, index=True)
 
 
 class ClassMember(Base):
@@ -97,6 +110,7 @@ class Curriculum(TimestampMixin, Base):
     language: Mapped[str] = mapped_column(String(10), default="en")
     status: Mapped[str] = mapped_column(String(20), default="processing")  # processing|ready|failed
     error: Mapped[str | None] = mapped_column(Text, nullable=True)
+    center_id: Mapped[str | None] = mapped_column(String(32), nullable=True, index=True)
     documents = relationship("Document", cascade="all, delete-orphan", back_populates="curriculum")
 
 

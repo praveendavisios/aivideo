@@ -32,7 +32,7 @@
   async function afterLogin() {
     $('#loginCard').classList.add('hidden'); $('#setupCard').classList.remove('hidden');
     const [devices, students] = await Promise.all([api('/api/v1/devices'), api('/api/v1/students')]);
-    $('#device').innerHTML = devices.map((d) => `<option value="${esc(d.id)}">${esc(d.id)} — ${esc(d.name)}</option>`).join('') || '<option value="">(register a device in the portal)</option>';
+    $('#device').innerHTML = devices.map((d) => `<option value="${esc(d.id)}">${esc(d.id)} — ${esc(d.name)}</option>`).join('') || '<option value="">(register one under Robot devices)</option>';
     $('#student').innerHTML = students.map((s) => `<option value="${esc(s.id)}">${esc(s.display_name)} (grade ${esc(s.grade || '?')})${s.consent_learning ? '' : ' — no consent'}</option>`).join('');
     const linked = devices[0] && devices[0].student_id; if (linked) $('#student').value = linked;
     loadLessons();
@@ -46,7 +46,7 @@
   async function loadLessons() {
     const sid = $('#student').value; if (!sid) return;
     try { assignments = await api(`/api/v1/students/${sid}/assignments`); } catch (e) { assignments = []; }
-    $('#curriculum').innerHTML = assignments.map((a, i) => `<option value="${i}">${esc(a.title)}</option>`).join('') || '<option>(nothing assigned — assign in the portal)</option>';
+    $('#curriculum').innerHTML = assignments.map((a, i) => `<option value="${i}">${esc(a.title)}</option>`).join('') || '<option>(nothing assigned — assign under Classes)</option>';
     fillLessons();
   }
   function fillLessons() {

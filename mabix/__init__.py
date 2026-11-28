@@ -43,7 +43,13 @@ def create_app(test_config=None):
     @app.context_processor
     def _branding():
         from . import repo
-        return {"logo_url": Config.LOGO_URL, "app_version": __version__, "admin_name": Config.ADMIN_USERNAME,
+        from flask import session
+        from .auth import mabcat_enabled
+        return {"logo_url": Config.LOGO_URL, "app_version": __version__,
+                "admin_name": session.get("name") or session.get("user") or Config.ADMIN_USERNAME,
+                "user_role": session.get("role", "admin"), "mabcat_enabled": mabcat_enabled(),
+                "mc_token": session.get("mc_token") or "", "mc_user_id": session.get("mc_user_id") or "",
+                "mc_email": session.get("user") or "",
                 "theme_pref": (repo.get_setting("preferences", {}) or {}).get("theme", "system"),
                 "studio_modules": __import__("mabix.pipelines.studio", fromlist=["MODULES"]).MODULES}
 

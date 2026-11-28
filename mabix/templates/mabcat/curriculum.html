@@ -1,0 +1,179 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon %}
+{% block title %}Curricula & lessons{% endblock %}
+{% block crumb %}Curriculum management{% endblock %}
+{% block content %}
+<ol class="steps" aria-label="AI teacher preparation">
+  <li class="done">Upload curriculum</li><li class="done">AI analysis</li><li class="now">Review structure</li><li>Lesson plans</li><li>Approve</li><li>Teach with Mab Cat</li>
+</ol>
+<div class="grid grid-3">
+  <section class="card span-2">
+    <div class="card-head"><h2>Curricula</h2><button class="btn primary sm" id="uploadBtn">{{ icon('upload', 'sm') }} Upload curriculum</button></div>
+    <div class="table-wrap"><table class="table"><tbody id="curList"><tr><td><div class="skeleton" style="height:90px"></div></td></tr></tbody></table></div>
+  </section>
+  <section class="card"><div class="card-head"><h2>Search curriculum</h2></div>
+    <div class="card-body stack"><div class="search" style="max-width:none">{{ icon('search', 'sm') }}<input type="search" id="searchQ" placeholder="e.g. what is chlorophyll" disabled></div>
+      <div id="searchOut" class="subtle">Select a curriculum, then search what Mab Cat can find in it.</div></div></section>
+</div>
+<div class="grid grid-3" style="margin-top:18px">
+  <section class="card"><div class="card-head"><h2>Structure</h2><span class="subtle" id="curTitle"></span></div>
+    <div class="card-body" id="tree"><p class="subtle">Choose a curriculum above.</p></div></section>
+  <section class="card span-2"><div class="card-head"><h2 id="nodeTitle">Topic</h2><span id="nodeLevel" class="badge"></span></div>
+    <div class="card-body stack" id="node"><p class="subtle">Select a chapter or topic to see what was extracted, prepare the lesson plan and create materials.</p></div></section>
+</div>
+<style>
+  .tree{list-style:none;margin:0;padding-left:14px}.tree li{margin:2px 0}
+  .tree .tn{cursor:pointer;padding:3px 7px;border-radius:7px;display:inline-block;font-weight:550}
+  .tree .tn:hover,.tree .tn.on{background:var(--brand-soft);color:var(--brand-ink)}
+  .xsec h3{margin:10px 0 4px}.xsec ul{margin:0;padding-left:18px}
+</style>
+{% endblock %}
+{% block scripts %}<script>
+(() => {
+  const { $, esc } = ui;
+  let curId = null, nodeId = null, centers = [];
+  const ST = { ready: 'good', failed: 'bad', processing: 'warn live', pending: 'warn' };
+  const badge = (s) => `<span class="badge ${ST[s] || ''}"><span class="dot"></span>${esc(s)}</span>`;
+
+  async function loadList() {
+    const [curs] = await Promise.all([mc.api('/curricula'), mc.centers().then((c) => { centers = c; })]);
+    $('#curList').innerHTML = curs.length ? curs.map((c) => `<tr class="expandable" data-cur="${c.id}">
+      <td><b>${esc(c.title)}</b><div class="subtle">${esc(c.subject || 'subject ?')} · grade ${esc(c.grade || '?')} · ${esc(c.language)} · ${esc(mc.centerName(centers, c.center_id))}</div>
+        ${c.documents.map((d) => `<div class="subtle">${ui.icon('book', 'sm')} ${esc(d.filename)} · ${d.pages || 0} p. ${d.method ? '· ' + esc(d.method) : ''} ${badge(d.status)}${d.error ? ' <span style="color:var(--bad)">' + esc(d.error) + '</span>' : ''}</div>`).join('')}</td>
+      <td style="width:1%">${badge(c.status)}</td>
+      <td style="width:1%;white-space:nowrap"><button class="btn ghost sm" data-add="${c.id}" title="Add documents">${ui.icon('plus', 'sm')}</button>
+        <button class="btn ghost sm danger" data-del="${c.id}" title="Delete">${ui.icon('trash', 'sm')}</button></td></tr>`).join('')
+      : `<tr><td>${ui.empty('book', 'No curricula yet', 'Upload a syllabus, textbook chapter, worksheet or scanned pages — Mab Cat learns from it.', '<button class="btn primary" onclick="document.getElementById(\'uploadBtn\').click()">Upload curriculum</button>')}</td></tr>`;
+    if (curs.some((c) => c.status === 'processing')) setTimeout(loadList, 2500);
+  }
+
+  function uploadDialog(addTo) {
+    const m = ui.modal({ title: addTo ? 'Add documents' : 'Upload curriculum', body: `<div class="stack">
+      ${addTo ? '' : `<div class="form-grid" style="grid-template-columns:2fr 1fr 1fr">
+        <div class="field"><label for="u-title">Title</label><input type="text" id="u-title" placeholder="Grade 5 Science — Term 1"></div>
+        <div class="field"><label for="u-subject">Subject</label><input type="text" id="u-subject" placeholder="auto-detect"></div>
+        <div class="field"><label for="u-grade">Grade</label><input type="text" id="u-grade" placeholder="auto"></div>
+        <div class="field"><label for="u-lang">Language</label><select id="u-lang"><option value="en">English</option><option value="ml">Malayalam</option><option value="hi">Hindi</option><option value="ta">Tamil</option><option value="kn">Kannada</option></select></div>
+        <div class="field"><label for="u-center">Center</label><select id="u-center">${mc.opts(centers.map((c) => ({ id: c.id, label: c.name })), '', '(my center)')}</select></div></div>`}
+      <label class="dropzone" for="u-files" style="padding:22px"><b>Choose files</b><p class="subtle">PDF, DOCX, PPTX, TXT, images and scanned pages (OCR) · up to 20 files</p>
+        <input type="file" id="u-files" multiple class="sr-only" accept=".pdf,.docx,.pptx,.txt,.md,.png,.jpg,.jpeg,.webp,.tif,.tiff"></label>
+      <div id="u-list" class="subtle"></div></div>`,
+      footer: '<button class="btn" data-x>Cancel</button><button class="btn primary" id="u-go">Upload & analyse</button>' });
+    $('#u-files', m.el).onchange = (e) => { $('#u-list', m.el).textContent = [...e.target.files].map((f) => f.name).join(', '); };
+    $('#u-go', m.el).onclick = (e) => mc.guard(async () => {
+      const files = $('#u-files', m.el).files;
+      if (!files.length) throw new Error('Choose at least one file');
+      const fd = new FormData();
+      if (!addTo) {
+        if (!$('#u-title', m.el).value.trim()) throw new Error('Enter a title');
+        fd.append('title', $('#u-title', m.el).value.trim()); fd.append('subject', $('#u-subject', m.el).value);
+        fd.append('grade', $('#u-grade', m.el).value); fd.append('language', $('#u-lang', m.el).value);
+        if ($('#u-center', m.el).value) fd.append('center_id', $('#u-center', m.el).value);
+      }
+      [...files].forEach((f) => fd.append('files', f));
+      await mc.api(addTo ? `/curricula/${addTo}/documents` : '/curricula', { body: fd });
+      m.close(); ui.toast('Uploaded — Mab Cat is analysing the documents'); loadList();
+    }, e.currentTarget, 'Uploading…');
+  }
+
+  async function openCur(id) {
+    curId = id; $('#searchQ').disabled = false;
+    const c = await mc.api('/curricula/' + id);
+    $('#curTitle').textContent = c.title;
+    const render = (nodes) => `<ul class="tree">${nodes.map((n) => `<li><span class="tn" data-node="${n.id}">${esc(n.title)}</span>
+      <span class="subtle">${n.level !== 'topic' && n.level !== 'subtopic' ? n.level : ''}${n.counts.questions ? ` · ${n.counts.questions}Q` : ''}${n.counts.definitions ? ` · ${n.counts.definitions} def` : ''}</span>
+      ${n.children.length ? render(n.children) : ''}</li>`).join('')}</ul>`;
+    $('#tree').innerHTML = c.tree.length ? render(c.tree) : '<p class="subtle">Nothing extracted yet.</p>';
+  }
+
+  const list = (arr, f) => (arr && arr.length ? `<ul>${arr.map((x) => `<li>${f(x)}</li>`).join('')}</ul>` : '<p class="subtle">none found in the document</p>');
+  async function openNode(id) {
+    nodeId = id;
+    const n = await mc.api('/nodes/' + id);
+    $('#nodeTitle').textContent = n.title; $('#nodeLevel').textContent = n.level;
+    const plan = n.plans[0];
+    $('#node').innerHTML = `
+      <details ${plan ? '' : 'open'}><summary style="cursor:pointer;font-weight:650">Extracted from the document</summary><div class="xsec">
+        <h3>Learning objectives</h3>${list(n.objectives, esc)}
+        <h3>Definitions</h3>${list(n.definitions, (d) => `<b>${esc(d.term)}</b>: ${esc(d.meaning)} <span class="badge">p.${d.page}</span>`)}
+        <h3>Examples</h3>${list(n.examples, (x) => esc(x.text))}<h3>Activities</h3>${list(n.activities, (x) => esc(x.text))}
+        <h3>Questions in the book</h3>${list(n.questions, (q) => `${esc(q.question)}${q.answer ? ` — <i>${esc(q.answer)}</i>` : ''}`)}</div></details>
+      <div class="row"><select id="persona" style="width:auto"><option value="">Teacher persona: auto</option>${['friendly', 'storyteller', 'math', 'science', 'language', 'coding'].map((p) => `<option>${p}</option>`).join('')}</select>
+        <button class="btn primary" id="genPlan">${ui.icon('wand', 'sm')} ${plan ? 'Regenerate lesson plan' : 'Prepare lesson plan'}</button></div>
+      ${plan ? planEditor(plan) : '<div class="notice info">' + ui.icon('info') + '<div>Mab Cat prepares a friendly lesson plan from this topic. You can edit and approve it before teaching.</div></div>'}
+      <div class="card"><div class="card-head"><h2>Teaching materials</h2><div class="actions">${[['flashcards', 'Flashcards'], ['worksheet', 'Worksheet'], ['quiz', 'Quiz'], ['illustration', 'Illustration'], ['video', 'Explainer video'], ['story_video', 'Story video']]
+        .map(([k, l]) => `<button class="btn sm" data-mat="${k}">${l}</button>`).join('')}</div></div>
+        <div class="card-body stack" id="mats">${n.materials.length ? n.materials.map(matHtml).join('') : '<p class="subtle">No materials yet. Videos are made in the AI Video Studio and appear in the Video Library.</p>'}</div></div>`;
+    $('#genPlan').onclick = (e) => mc.guard(async () => {
+      await mc.api(`/nodes/${id}/plans${$('#persona').value ? '?persona=' + $('#persona').value : ''}`, { method: 'POST' });
+      ui.toast('Lesson plan ready for review'); openNode(id);
+    }, e.currentTarget, 'Preparing…');
+    $('#node').querySelectorAll('[data-mat]').forEach((b) => { b.onclick = () => mc.guard(async () => {
+      await mc.api(`/nodes/${id}/materials?kind=${b.dataset.mat}`, { method: 'POST' });
+      ui.toast(b.textContent + ' requested'); openNode(id);
+    }, b, '…'); });
+    if (plan) bindPlan(plan);
+    loadImages();
+    if (n.materials.some((m) => ['pending', 'processing'].includes(m.status))) setTimeout(() => nodeId === id && openNode(id), 5000);
+  }
+  function matHtml(m) {
+    const c = m.content || {};
+    let body = '';
+    if (m.kind === 'flashcards') body = list(c.cards, (x) => `<b>${esc(x.front)}</b> — ${esc(x.back)}`);
+    else if (m.kind === 'quiz') body = list(c.items, (x) => `${esc(x.question)}${x.options ? ` <span class="subtle">[${x.options.map(esc).join(' · ')}]</span>` : ''} — <i>${esc(x.answer)}</i>`);
+    else if (m.kind === 'worksheet') body = (c.sections || []).map((s) => `<h3 style="margin:6px 0 2px">${esc(s.heading)}</h3>${list(s.items, esc)}`).join('');
+    else if (m.kind === 'video' && m.studio_video_id) body = `<a class="btn sm" href="/videos/${m.studio_video_id}">${ui.icon('library', 'sm')} Open in Video Library</a>`;
+    else if (m.kind === 'illustration' && m.has_file) body = `<img data-mat-img="${m.id}" alt="Generated illustration" style="max-width:100%;border-radius:10px">`;
+    return `<details><summary style="cursor:pointer"><b>${esc(m.kind.replace('_', ' '))}</b> ${badge(m.status)} ${m.error ? '<span class="subtle" style="color:var(--bad)">' + esc(m.error) + '</span>' : ''}</summary>${body}</details>`;
+  }
+  async function loadImages() {
+    for (const img of document.querySelectorAll('img[data-mat-img]')) {
+      const b = await mc.api(`/materials/${img.dataset.matImg}/file`).catch(() => null);
+      if (b) img.src = URL.createObjectURL(b);
+    }
+  }
+  function planEditor(p) {
+    const c = p.content;
+    return `<div class="card"><div class="card-head"><h2>Lesson plan</h2><div class="actions">${p.status === 'approved' ? '<span class="badge good"><span class="dot"></span>Approved — used for teaching</span>' : '<span class="badge warn"><span class="dot"></span>Draft</span>'}
+        <span class="subtle">${esc(p.generator)} · ${esc(p.persona)}</span></div></div><div class="card-body stack">
+      ${(c.gaps || []).length ? `<div class="notice warn">${ui.icon('alert')}<div>Not covered by the uploaded document: ${esc(c.gaps.join(', '))}. Add it yourself if needed — Mab Cat will not invent it.</div></div>` : ''}
+      <div class="field"><label for="p-intro">Introduction</label><textarea id="p-intro" rows="2">${esc(c.introduction)}</textarea></div>
+      <div class="field"><label for="p-expl">Friendly explanation</label><textarea id="p-expl" rows="4">${esc(c.explanation)}</textarea></div>
+      <div class="field"><label for="p-story">Story-based explanation</label><textarea id="p-story" rows="2">${esc(c.story)}</textarea></div>
+      <div class="field"><label for="p-ex">Real-life examples (one per line)</label><textarea id="p-ex" rows="2">${esc((c.real_life_examples || []).join('\n'))}</textarea></div>
+      <div class="field"><label for="p-qs">Questions Mab Cat asks (one per line: question | expected answer)</label><textarea id="p-qs" rows="5">${esc((c.questions || []).map((q) => `${q.question} | ${q.expected_answer || ''}`).join('\n'))}</textarea></div>
+      <div class="field"><label for="p-mis">Common misunderstandings (one per line)</label><textarea id="p-mis" rows="2">${esc((c.common_misunderstandings || []).join('\n'))}</textarea></div>
+      <div class="field"><label for="p-acts">Activities (one per line)</label><textarea id="p-acts" rows="2">${esc((c.activities || []).join('\n'))}</textarea></div>
+      <div class="row"><span class="subtle">Sources: ${(c.sources || []).slice(0, 4).map((s) => `${esc(s.filename)} p.${s.page}`).join(', ') || '—'}</span><span class="spacer"></span>
+        <button class="btn" id="p-save">Save edits</button><button class="btn primary" id="p-approve">${ui.icon('check', 'sm')} ${p.status === 'approved' ? 'Save & keep approved' : 'Approve for teaching'}</button></div></div></div>`;
+  }
+  function bindPlan(p) {
+    const lines = (id) => $(id).value.split('\n').map((s) => s.trim()).filter(Boolean);
+    const collect = () => ({ ...p.content, introduction: $('#p-intro').value, explanation: $('#p-expl').value, story: $('#p-story').value,
+      real_life_examples: lines('#p-ex'), common_misunderstandings: lines('#p-mis'), activities: lines('#p-acts'),
+      questions: lines('#p-qs').map((l) => { const [q, a] = l.split('|'); return { question: q.trim(), expected_answer: (a || '').trim() }; }) });
+    $('#p-save').onclick = (e) => mc.guard(async () => { await mc.api('/plans/' + p.id, { method: 'PATCH', body: { content: collect() } }); ui.toast('Plan saved'); }, e.currentTarget, 'Saving…');
+    $('#p-approve').onclick = (e) => mc.guard(async () => { await mc.api('/plans/' + p.id, { method: 'PATCH', body: { content: collect(), status: 'approved' } }); ui.toast('Approved — Mab Cat teaches from this plan'); openNode(nodeId); }, e.currentTarget, 'Saving…');
+  }
+
+  $('#uploadBtn').onclick = () => uploadDialog(null);
+  $('#curList').addEventListener('click', async (e) => {
+    const add = e.target.closest('[data-add]'); if (add) { e.stopPropagation(); return uploadDialog(add.dataset.add); }
+    const del = e.target.closest('[data-del]');
+    if (del) { e.stopPropagation();
+      if (await ui.confirmDialog({ title: 'Delete curriculum?', message: 'Its documents, structure, lesson plans and materials are removed.', confirmText: 'Delete', danger: true }))
+        mc.guard(async () => { await mc.api('/curricula/' + del.dataset.del, { method: 'DELETE' }); ui.toast('Curriculum deleted'); loadList(); });
+      return; }
+    const row = e.target.closest('[data-cur]'); if (row) mc.guard(() => openCur(row.dataset.cur));
+  });
+  $('#tree').addEventListener('click', (e) => { const t = e.target.closest('[data-node]'); if (!t) return;
+    document.querySelectorAll('.tn.on').forEach((x) => x.classList.remove('on')); t.classList.add('on'); mc.guard(() => openNode(t.dataset.node)); });
+  $('#searchQ').addEventListener('keydown', (e) => { if (e.key !== 'Enter' || !curId) return;
+    mc.guard(async () => {
+      const r = await mc.api(`/curricula/${curId}/search?q=${encodeURIComponent($('#searchQ').value)}`);
+      $('#searchOut').innerHTML = r.results.length ? r.results.map((h) => `<p><span class="badge">${esc(h.source.filename)} p.${h.source.page}</span> <span class="subtle">score ${h.score}</span><br>${esc(h.text.slice(0, 260))}…</p>`).join('')
+        : '<p>Not found in this curriculum — Mab Cat will say so instead of guessing.</p>';
+    }); });
+  loadList().catch((e) => ui.toast(e.message, 'bad'));
+})();
+</script>{% endblock %}

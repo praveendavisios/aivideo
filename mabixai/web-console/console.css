@@ -42,3 +42,6 @@ table.t{width:100%;border-collapse:collapse;font-size:13px}table.t th,table.t td
 .toast{position:fixed;right:16px;bottom:16px;background:var(--text);color:var(--panel);padding:9px 13px;border-radius:10px;z-index:50;max-width:380px}
 .kv{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;font-size:13px}.kv dt{color:var(--faint)}.kv dd{margin:0}
 details summary{cursor:pointer;font-weight:600}
+
+.embedded header.top .brand,.embedded header.top nav,.embedded #logoutBtn,.embedded #logout{display:none}
+.embedded header.top{position:static;padding:6px 14px}.embedded main{padding-top:10px}
