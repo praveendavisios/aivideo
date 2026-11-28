@@ -1,4 +1,4 @@
-{% from "_macros.html" import icon, robocat, robocat_face %}<!doctype html>
+{% from "_macros.html" import icon %}<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -13,10 +13,8 @@
 {% include "_icons.html" %}
 <div class="auth">
   <section class="auth-art" aria-hidden="true">
-    <div class="brand" style="padding:0;color:#fff">
-      {{ robocat_face() }}<span class="wordmark" style="color:#fff">Mabix<b>AI</b><small style="color:#b9c4ff">RoboCat</small></span>
-    </div>
-    {{ robocat() }}
+    <div></div>
+    <div class="auth-logo"><img src="{{ logo_url }}" alt="Mabix AI" onerror="this.parentNode.innerHTML='<b>Mabix<span>AI</span></b>'"></div>
     <div>
       <h1>Your AI learning companion — and the studio behind it.</h1>
       <p>Train Mab Cat on your curriculum, manage students and centers, and create AI learning videos.</p>
@@ -30,7 +28,7 @@
   </section>
   <section class="auth-form">
     <div class="auth-card">
-      <div class="brand" style="padding:0 0 24px">{{ robocat_face() }}<span class="wordmark">Mabix<b>AI</b><small>RoboCat studio</small></span></div>
+      <div class="brand" style="padding:0 0 24px"><img src="{{ logo_url }}" alt="Mabix AI" class="brand-logo" onerror="this.hidden=true;this.nextElementSibling.hidden=false"><span class="wordmark" hidden>Mabix<b>AI</b></span></div>
       <h2>Welcome back</h2>
       <p class="muted">Admins, teachers and parents sign in here.</p>
       {% with msgs = get_flashed_messages() %}{% for m in msgs %}
