@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mab Cat Console</title>
+<link rel="stylesheet" href="console.css">
+</head>
+<body>
+<header class="top">
+  <span class="brand">Mabix<b>AI</b> · Mab Cat</span>
+  <nav><a href="./" class="on">Teaching console</a><a href="stt.html">Speech console</a><a href="portal.html">Teacher & parent portal</a><a href="/api/docs">API docs</a><a href="/dashboard">Video studio</a></nav>
+  <span class="spacer"></span>
+  <span id="conn" class="pill">disconnected</span>
+</header>
+<main>
+  <section class="card" id="loginCard">
+    <h2>Sign in (parent or admin who owns the test device)</h2>
+    <div class="body row">
+      <label class="f" style="width:240px">Email<input id="email" value="admin@mabix.local" autocomplete="username"></label>
+      <label class="f" style="width:200px">Password<input id="pw" type="password" autocomplete="current-password"></label>
+      <button class="primary" id="loginBtn">Sign in</button>
+      <span class="faint">No device yet? Register one in the <a href="portal.html">portal</a> (Parent → Devices).</span>
+    </div>
+  </section>
+
+  <section class="card hidden" id="setupCard" style="margin-bottom:14px">
+    <div class="body row">
+      <label class="f" style="width:200px">Device<select id="device"></select></label>
+      <label class="f" style="width:200px">Student<select id="student"></select></label>
+      <label class="f" style="width:150px">Language<select id="lang">
+        <option value="auto">Auto</option><option value="en">English</option><option value="ml">Malayalam</option><option value="ml-en">Malayalam + English</option>
+        <option value="hi">Hindi</option><option value="hi-en">Hindi + English</option><option value="ta">Tamil</option><option value="kn">Kannada</option></select></label>
+      <label class="f" style="width:130px">TTS rate<select id="ttsRate"><option>16000</option><option>24000</option></select></label>
+      <label class="row" style="margin-top:16px"><input type="checkbox" id="tts" checked style="width:auto"> Speak replies</label>
+      <button class="primary" id="connectBtn" style="margin-top:16px">Connect & start session</button>
+      <button id="endBtn" style="margin-top:16px" disabled>End session</button>
+      <span class="spacer"></span><button class="sm" id="logoutBtn">Sign out</button>
+    </div>
+  </section>
+
+  <div class="grid g3">
+    <div class="stack">
+      <section class="card"><h2>Robot screen (800×480 simulation)</h2>
+        <div class="body stack"><div class="robot-wrap" id="robotBox"></div>
+          <div class="row" id="exprBtns"></div>
+          <div class="row"><label class="f" style="flex:1">Left ear <input type="range" id="earL" min="0" max="90" value="50"></label>
+            <label class="f" style="flex:1">Right ear <input type="range" id="earR" min="0" max="90" value="50"></label>
+            <button class="sm" id="sendEars">Send ears</button></div>
+          <span class="faint">Buttons send <span class="mono">robot_expression</span> through the server to every screen connected to this device.</span>
+        </div></section>
+      <section class="card"><h2>Generated images</h2><div class="body imgs" id="images"><span class="faint">Illustrations generated for this device appear here.</span></div></section>
+    </div>
+
+    <section class="card"><h2>Conversation <span class="spacer"></span><span class="pill" id="lessonPill">free chat</span></h2>
+      <div class="chat" id="chat"></div>
+      <div class="body stack">
+        <div id="quizBox" class="hidden"></div>
+        <div class="row"><input id="text" placeholder="Type as the student… e.g. Can you explain photosynthesis?" style="flex:1" disabled>
+          <button class="primary" id="sendBtn" disabled>Send</button>
+          <button id="micBtn" disabled title="Talk to Mab Cat">🎤 Talk</button></div>
+        <div class="row"><div class="meter" style="flex:1"><i id="level"></i></div><span class="faint" id="micState">mic off</span></div>
+        <div class="row faint" id="partial"></div>
+      </div>
+    </section>
+
+    <div class="stack col3">
+      <section class="card"><h2>Lessons</h2><div class="body stack">
+        <label class="f">Assigned curriculum<select id="curriculum"></select></label>
+        <label class="f">Lesson<select id="lesson"></select></label>
+        <button class="primary" id="lessonBtn" disabled>Start lesson</button>
+        <span class="faint" id="nextLesson"></span>
+      </div></section>
+      <section class="card"><h2>Protocol log <span class="spacer"></span><label class="row faint"><input type="checkbox" id="showBin" style="width:auto"> audio frames</label><button class="sm" id="dlLog">Download</button><button class="sm" id="clrLog">Clear</button></h2>
+        <div class="log" id="log"></div></section>
+    </div>
+  </div>
+</main>
+<script src="common.js"></script>
+<script src="robot.js"></script>
+<script src="teach.js"></script>
+</body>
+</html>

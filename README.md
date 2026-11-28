@@ -5,6 +5,24 @@ news-feed videos, direct uploads, a central video library, job history and YouTu
 
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for how it is built.
 
+## MabixAI RoboCat — AI teacher platform
+
+An AI teacher ("Mab Cat") that learns from uploaded curricula, teaches children by voice and touch,
+asks and grades questions, and tracks progress; the physical robot (Waveshare ESP32-S3 4.3") is the
+child's interface. FastAPI backend in `mabixai/`, serving the video studio on the same port.
+
+```bash
+pip install -r requirements.txt -r requirements-mabcat.txt
+uvicorn mabixai.backend.main:app --host 0.0.0.0 --port 8000
+```
+
+* Portal (teachers/parents/admin): `/console/portal.html` · Teaching console + robot simulator: `/console/`
+  · Speech console: `/console/stt.html` · API docs: `/api/docs` · Video studio: `/dashboard`
+* Docs: [architecture](docs/mabcat/ARCHITECTURE.md) · [WebSocket protocol](docs/mabcat/WEBSOCKET_PROTOCOL.md)
+  · [speech (STT/TTS)](docs/mabcat/SPEECH.md) · [ESP32 hardware](docs/mabcat/HARDWARE_ESP32.md)
+  · [API examples](docs/mabcat/API.md) · [installation & deployment](docs/mabcat/DEPLOYMENT.md)
+  · [test report](docs/mabcat/TEST_REPORT.md)
+
 ## Setup (Windows/Linux, RTX 50-series GPU)
 
 ```bash
@@ -46,5 +64,5 @@ history — rotate them and put the new ones in `.env`.
 ## Tests
 
 ```bash
-python -m pytest -q
+python -m pytest -q tests mabixai/tests
 ```

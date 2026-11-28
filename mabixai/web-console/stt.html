@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mab Cat Speech Console</title>
+<link rel="stylesheet" href="console.css">
+</head>
+<body>
+<header class="top">
+  <span class="brand">Mabix<b>AI</b> · Speech-to-text</span>
+  <nav><a href="./">Teaching console</a><a href="stt.html" class="on">Speech console</a><a href="portal.html">Portal</a><a href="/api/docs">API docs</a></nav>
+  <span class="spacer"></span><span id="conn" class="pill">disconnected</span>
+</header>
+<main class="stack">
+  <section class="card" id="loginCard"><h2>Sign in</h2><div class="body row">
+    <label class="f" style="width:240px">Email<input id="email" value="admin@mabix.local"></label>
+    <label class="f" style="width:200px">Password<input id="pw" type="password"></label>
+    <button class="primary" id="loginBtn">Sign in</button></div></section>
+
+  <section class="card hidden" id="setup"><div class="body row">
+    <label class="f" style="width:190px">Device<select id="device"></select></label>
+    <label class="f" style="width:190px">Student (audio consent needed)<select id="student"></select></label>
+    <label class="f" style="width:170px">Language hint<select id="lang">
+      <option value="auto">Auto-detect</option><option value="en">English</option><option value="ml">Malayalam</option><option value="ml-en">Malayalam + English (mixed)</option>
+      <option value="hi">Hindi</option><option value="hi-en">Hindi + English (mixed)</option><option value="ta">Tamil</option><option value="kn">Kannada</option><option value="te">Telugu</option></select></label>
+    <label class="f" style="width:170px">Provider<select id="provider"><option value="">Router decides</option></select></label>
+    <label class="row" style="margin-top:16px"><input type="checkbox" id="forward" style="width:auto"> Send finals to AI teacher</label>
+    <button class="primary" id="connectBtn" style="margin-top:16px">Connect</button>
+    <button id="recBtn" style="margin-top:16px" disabled>🎤 Start recording</button>
+  </div></section>
+
+  <div class="grid g2">
+    <section class="card"><h2>Live transcript</h2><div class="body stack">
+      <div class="row"><div class="meter" style="flex:1"><i id="level"></i></div><span class="faint" id="micState">mic off</span></div>
+      <div class="row"><span class="pill" id="vadState">idle</span><span class="faint" id="partial"></span></div>
+      <table class="t"><thead><tr><th>#</th><th>Transcript</th><th>Lang</th><th>Provider</th><th>Audio</th><th>Time</th></tr></thead><tbody id="finals"></tbody></table>
+      <div class="row"><button class="sm" id="dlJson">Download JSON</button><button class="sm" id="dlTxt">Download text</button>
+        <button class="sm" id="dlWav" disabled>Download recording</button><audio id="playback" controls class="hidden" style="height:32px"></audio></div>
+    </div></section>
+
+    <section class="card"><h2>Compare with what was said</h2><div class="body stack">
+      <div class="row" id="presets"></div>
+      <label class="f">What you said (reference)<textarea id="ref" rows="3" placeholder="Pick a test phrase above, read it aloud, then compare"></textarea></label>
+      <label class="f">Transcript (defaults to the latest final)<textarea id="hyp" rows="3"></textarea></label>
+      <div class="row"><button class="primary" id="cmpBtn">Compare</button><span id="cmpOut" class="muted"></span></div>
+      <p class="faint">WER/CER after case-folding and punctuation removal — the same formula as the server benchmark. Use the benchmark tool with real recordings to choose routes.</p>
+    </div></section>
+  </div>
+
+  <section class="card"><h2>Providers & routing</h2><div class="body"><table class="t"><thead><tr><th>Provider</th><th>Status</th><th>Languages</th><th>Notes</th></tr></thead><tbody id="providers"></tbody></table>
+    <p class="faint" id="routes"></p></div></section>
+  <section class="card"><h2>Events <span class="spacer"></span><button class="sm" id="clr">Clear</button></h2><div class="log" id="log"></div></section>
+</main>
+<script src="common.js"></script>
+<script>
+(() => {
+  const { $, esc, api } = MC;
+  let ws, mic, seq = 0, finals = [], recorded = [], rate = 16000;
+  const PRESETS = [['English', 'Mab Cat, what is photosynthesis?'], ['English', 'What is multiplication?'], ['Story', 'Mab Cat, tell me a story.'],
+    ['Malayalam', 'മഴ എങ്ങനെ ഉണ്ടാകുന്നു?'], ['Mixed ml-en', 'Photosynthesis എന്താണ്?'], ['Mixed ml-en', 'ഈ chapter എനിക്ക് explain ചെയ്യാമോ?'],
+    ['Mixed', 'What is മഴ in English?'], ['Hindi', 'गुणा क्या होता है?'], ['Mixed hi-en', 'Photosynthesis क्या है?']];
+  PRESETS.forEach(([l, t]) => { const b = document.createElement('button'); b.className = 'sm'; b.textContent = l; b.title = t; b.onclick = () => { $('#ref').value = t; }; $('#presets').appendChild(b); });
+  const log = (m) => { const d = document.createElement('div'); d.textContent = new Date().toLocaleTimeString() + ' ' + JSON.stringify(m); $('#log').appendChild(d); $('#log').scrollTop = 1e9; };
+  $('#clr').onclick = () => { $('#log').innerHTML = ''; };
+
+  async function after() {
+    $('#loginCard').classList.add('hidden'); $('#setup').classList.remove('hidden');
+    const [d, s, st] = await Promise.all([api('/api/v1/devices'), api('/api/v1/students'), api('/api/v1/stt/status')]);
+    $('#device').innerHTML = d.map((x) => `<option>${esc(x.id)}</option>`).join('');
+    $('#student').innerHTML = s.map((x) => `<option value="${esc(x.id)}">${esc(x.display_name)}${x.consent_audio ? '' : ' — no audio consent'}</option>`).join('');
+    $('#providers').innerHTML = Object.entries(st.providers).map(([n, p]) => `<tr><td><b>${esc(n)}</b></td><td><span class="pill ${p.available ? 'good' : 'bad'}">${p.available ? 'available' : 'unavailable'}</span></td>
+      <td class="faint">${esc(Array.isArray(p.languages) ? p.languages.join(', ') : p.languages)}</td><td class="faint">${esc(p.detail)}${p.needs_language ? ' · needs a language hint' : ''}${p.local ? '' : ' · cloud'}</td></tr>`).join('');
+    Object.keys(st.providers).forEach((n) => $('#provider').insertAdjacentHTML('beforeend', `<option>${esc(n)}</option>`));
+    $('#routes').textContent = `Routes: ${Object.entries(st.routes).map(([k, v]) => `${k}→${v}`).join(', ')} · VAD ${st.vad} · noise ${st.noise_reduction} · end of utterance ${st.end_of_utterance_ms} ms · raw audio stored: ${st.store_audio}`;
+  }
+  $('#loginBtn').onclick = async () => { try { await MC.login($('#email').value, $('#pw').value); after(); } catch (e) { MC.toast(e.message); } };
+  if (MC.token()) after().catch(() => MC.logout());
+
+  $('#connectBtn').onclick = () => {
+    if (ws) ws.close();
+    ws = new WebSocket(MC.wsUrl(`/ws/mabcat/audio/${encodeURIComponent($('#device').value)}`)); ws.binaryType = 'arraybuffer';
+    ws.onopen = () => ws.send(JSON.stringify({ type: 'auth', user_token: MC.token() }));
+    ws.onclose = () => { $('#conn').textContent = 'disconnected'; $('#conn').className = 'pill bad'; $('#recBtn').disabled = true; stop(); };
+    ws.onmessage = (e) => { const m = JSON.parse(e.data); log(m); handle(m); };
+  };
+  function handle(m) {
+    if (m.type === 'connected') { $('#conn').textContent = 'connected'; $('#conn').className = 'pill good'; $('#recBtn').disabled = false; }
+    if (m.type === 'session_ready') $('#micState').textContent = `streaming @ ${rate} Hz → ${m.internal_format} · VAD ${m.vad}`;
+    if (m.type === 'speech_detected') { $('#vadState').textContent = 'speech'; $('#vadState').className = 'pill info'; }
+    if (m.type === 'processing_status') { $('#vadState').textContent = m.status; $('#vadState').className = 'pill warn'; }
+    if (m.type === 'partial_transcript') $('#partial').textContent = '… ' + m.text;
+    if (m.type === 'language_detected') $('#partial').textContent = `language ${m.language} (${m.source})`;
+    if (m.type === 'final_transcript') {
+      finals.push(m); $('#hyp').value = m.text; $('#partial').textContent = ''; $('#vadState').textContent = 'idle'; $('#vadState').className = 'pill';
+      const mixed = m.code_switching && m.code_switching.mixed ? ' <span class="pill brand">mixed</span>' : '';
+      $('#finals').insertAdjacentHTML('beforeend', `<tr><td>${finals.length}</td><td>${esc(m.text)}</td><td>${esc(m.language)}${mixed}</td>
+        <td>${esc(m.provider)}<div class="faint">${esc(m.model || '')}${m.routing && m.routing.fallback_from ? ' · fallback' : ''}</div></td><td>${m.duration}s</td><td>${m.processing_ms} ms<div class="faint">RTF ${m.rtf ?? '—'}</div></td></tr>`);
+    }
+    if (m.type === 'transcription_error' || m.type === 'error') MC.toast(`${m.code}: ${m.message}`);
+  }
+  async function start() {
+    try { mic = await MC.startMic((pcm) => ws.readyState === 1 && ws.send(MC.packFrame(1, 1, seq++, pcm)), (r) => { $('#level').style.width = Math.min(100, r * 400) + '%'; }); }
+    catch (e) { return MC.toast('Microphone unavailable: ' + e.message); }
+    rate = mic.sampleRate; seq = 0; recorded = mic.recorded;
+    ws.send(JSON.stringify({ type: 'session_start', device_id: $('#device').value, student_id: $('#student').value, sample_rate: rate, channels: 1,
+      audio_format: 'pcm_s16le', language: $('#lang').value, provider: $('#provider').value || undefined, forward_to_teacher: $('#forward').checked }));
+    $('#recBtn').textContent = '⏹ Stop recording'; $('#recBtn').classList.add('rec');
+  }
+  function stop() {
+    if (!mic) return; mic.stop(); mic = null;
+    if (ws && ws.readyState === 1) ws.send(JSON.stringify({ type: 'session_stop' }));
+    $('#recBtn').textContent = '🎤 Start recording'; $('#recBtn').classList.remove('rec'); $('#level').style.width = 0;
+    const blob = MC.wavBlob(recorded, rate); $('#playback').src = URL.createObjectURL(blob); $('#playback').classList.remove('hidden');
+    $('#dlWav').disabled = false; $('#dlWav').onclick = () => MC.download('recording.wav', blob);
+  }
+  $('#recBtn').onclick = () => (mic ? stop() : start());
+  $('#dlJson').onclick = () => MC.download('transcripts.json', JSON.stringify(finals, null, 2));
+  $('#dlTxt').onclick = () => MC.download('transcripts.txt', finals.map((f) => `[${f.language} · ${f.provider}] ${f.text}`).join('\n'), 'text/plain');
+
+  const norm = (s) => s.normalize('NFC').toLocaleLowerCase().replace(/[^\p{L}\p{N}\p{M}\s]/gu, ' ').split(/\s+/).filter(Boolean);
+  function ed(a, b) { let p = Array.from({ length: b.length + 1 }, (_, i) => i); for (let i = 1; i <= a.length; i++) { const c = [i]; for (let j = 1; j <= b.length; j++) c.push(Math.min(p[j] + 1, c[j - 1] + 1, p[j - 1] + (a[i - 1] !== b[j - 1]))); p = c; } return p[b.length]; }
+  $('#cmpBtn').onclick = () => {
+    const r = norm($('#ref').value), h = norm($('#hyp').value);
+    if (!r.length) return MC.toast('Enter what you said');
+    const rc = [...r.join('')], hc = [...h.join('')];
+    $('#cmpOut').textContent = `WER ${(ed(r, h) / r.length * 100).toFixed(1)}% · CER ${(ed(rc, hc) / rc.length * 100).toFixed(1)}%`;
+  };
+})();
+</script>
+</body>
+</html>

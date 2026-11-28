@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mab Cat Portal</title>
+<link rel="stylesheet" href="console.css">
+</head>
+<body>
+<header class="top">
+  <span class="brand">Mabix<b>AI</b> · Portal</span>
+  <nav id="tabs"><a href="./">Teaching console</a><a href="stt.html">Speech console</a></nav>
+  <span class="spacer"></span><span id="who" class="faint"></span><button class="sm hidden" id="logout">Sign out</button>
+</header>
+<main class="stack">
+  <section class="card" id="loginCard"><h2>Sign in</h2><div class="body row">
+    <label class="f" style="width:240px">Email<input id="email" value="admin@mabix.local"></label>
+    <label class="f" style="width:200px">Password<input id="pw" type="password"></label>
+    <button class="primary" id="loginBtn">Sign in</button>
+    <span class="faint">Admin creates teacher and parent accounts (Admin tab).</span></div></section>
+
+  <!-- TEACHER -->
+  <div id="teacher" class="hidden stack">
+    <div class="grid g2">
+      <section class="card"><h2>Upload curriculum</h2><div class="body stack">
+        <div class="row"><label class="f" style="flex:2">Title<input id="cTitle" placeholder="Grade 5 Science — Term 1"></label>
+          <label class="f" style="flex:1">Subject<input id="cSubject" placeholder="auto-detect"></label>
+          <label class="f" style="width:90px">Grade<input id="cGrade" placeholder="auto"></label>
+          <label class="f" style="width:110px">Language<select id="cLang"><option value="en">English</option><option value="ml">Malayalam</option><option value="hi">Hindi</option><option value="ta">Tamil</option><option value="kn">Kannada</option></select></label></div>
+        <input type="file" id="cFiles" multiple accept=".pdf,.docx,.pptx,.txt,.md,.png,.jpg,.jpeg,.webp,.tif,.tiff">
+        <div class="row"><button class="primary" id="uploadBtn">Upload & analyse</button><span class="faint">PDF, DOCX, PPTX, TXT, images and scans (OCR)</span></div>
+      </div></section>
+      <section class="card"><h2>Curricula</h2><div class="body"><table class="t"><tbody id="curList"></tbody></table></div></section>
+    </div>
+    <div class="grid g2">
+      <section class="card"><h2>Structure <span class="spacer"></span><input id="searchQ" placeholder="Search this curriculum (RAG)" style="width:220px"></h2>
+        <div class="body" id="treeBox"><span class="faint">Select a curriculum.</span></div><div class="body hidden" id="searchBox"></div></section>
+      <section class="card"><h2 id="nodeTitle">Topic</h2><div class="body stack" id="nodeBox"><span class="faint">Select a topic to see extracted content, lesson plans and materials.</span></div></section>
+    </div>
+    <section class="card"><h2>Classes</h2><div class="body stack">
+      <div class="row"><input id="className" placeholder="Class name, e.g. 5A" style="width:200px"><button id="classBtn">Create class</button>
+        <label class="f" style="width:240px">Assign curriculum to student<select id="assignCur"></select></label><select id="assignStu" style="width:200px"></select><button id="assignBtn">Assign</button></div>
+      <div id="classes"></div></div></section>
+  </div>
+
+  <!-- PARENT -->
+  <div id="parent" class="hidden stack">
+    <div class="grid g2">
+      <section class="card"><h2>Children</h2><div class="body stack">
+        <div class="row"><input id="sName" placeholder="First name or nickname" style="width:170px"><input id="sGrade" placeholder="Grade" style="width:80px">
+          <input id="sAge" type="number" placeholder="Age" style="width:75px"><select id="sLang" style="width:120px"><option value="en">English</option><option value="ml">Malayalam</option><option value="hi">Hindi</option><option value="ta">Tamil</option><option value="kn">Kannada</option></select>
+          <input id="sLimit" type="number" value="60" title="Daily minutes" style="width:80px"><button class="primary" id="sBtn">Add child</button></div>
+        <table class="t"><thead><tr><th>Child</th><th>Consent</th><th>Daily limit</th><th></th></tr></thead><tbody id="stuList"></tbody></table>
+        <p class="faint">Mab Cat only teaches a child after you give learning consent. Voice is processed only with voice consent; raw recordings are not kept by default.</p>
+      </div></section>
+      <section class="card"><h2>RoboCat devices</h2><div class="body stack">
+        <div class="row"><input id="dId" placeholder="Device id, e.g. mabcat-001" style="width:190px"><select id="dStu" style="width:170px"></select><button class="primary" id="dBtn">Register</button></div>
+        <div id="dToken" class="hidden"></div>
+        <table class="t"><thead><tr><th>Device</th><th>Child</th><th>Last seen</th><th></th></tr></thead><tbody id="devList"></tbody></table>
+      </div></section>
+    </div>
+    <div class="grid g2">
+      <section class="card"><h2>Progress</h2><div class="body" id="progress"><span class="faint">Pick a child.</span></div></section>
+      <section class="card"><h2>Join a teacher's class</h2><div class="body row">
+        <select id="jStu" style="width:170px"></select><input id="jCode" placeholder="Class code" style="width:140px"><button id="jBtn">Join</button>
+        <span class="faint">Shares this child's progress with that teacher.</span></div></section>
+    </div>
+  </div>
+
+  <!-- ADMIN -->
+  <div id="admin" class="hidden stack">
+    <div class="grid g2">
+      <section class="card"><h2>Create account</h2><div class="body row">
+        <input id="uEmail" placeholder="email" style="width:200px"><input id="uName" placeholder="name" style="width:140px">
+        <select id="uRole" style="width:110px"><option>teacher</option><option>parent</option><option>admin</option></select>
+        <input id="uPw" type="password" placeholder="temporary password" style="width:170px"><button class="primary" id="uBtn">Create</button></div>
+        <div class="body"><table class="t"><tbody id="users"></tbody></table></div></section>
+      <section class="card"><h2>System</h2><div class="body stack"><dl class="kv" id="health"></dl><dl class="kv" id="overview"></dl></div></section>
+    </div>
+    <section class="card"><h2>Audit log</h2><div class="body"><div class="log" id="audit"></div></div></section>
+  </div>
+</main>
+<script src="common.js"></script>
+<script src="portal.js"></script>
+</body>
+</html>
