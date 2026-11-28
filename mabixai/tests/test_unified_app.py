@@ -146,3 +146,8 @@ def test_admin_registered_device_can_teach_admin_managed_student(client, people)
             if m["type"] in ("session_started", "error"):
                 break
         assert types[-1] == "session_started", types
+
+
+def test_console_files_are_not_cached(client):
+    r = client.get("/console/robot.js")
+    assert r.status_code == 200 and r.headers["cache-control"] == "no-cache" and "Mab Cat robot simulator" in r.text
