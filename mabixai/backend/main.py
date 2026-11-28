@@ -80,6 +80,14 @@ def create_app(mount_studio=True, database_url=None):
         if warm:
             asyncio.create_task(asyncio.to_thread(_warmup, warm))
 
+    @app.middleware("http")
+    async def _console_no_cache(request, call_next):
+        """Consoles are plain static files: make browsers revalidate them so updates show without cache clearing."""
+        response = await call_next(request)
+        if request.url.path.startswith("/console"):
+            response.headers["Cache-Control"] = "no-cache"
+        return response
+
     if os.path.isdir(CONSOLE_DIR):
         app.mount("/console", StaticFiles(directory=CONSOLE_DIR, html=True), name="console")
 
