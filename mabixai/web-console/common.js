@@ -1,4 +1,5 @@
 /* Shared console helpers: auth token, REST, WebSocket wire format, mic capture, PCM playback. */
+if (window.self !== window.top) document.documentElement.classList.add('embedded');  // inside the Mabix app
 const MC = (() => {
   const $ = (s, r = document) => r.querySelector(s);
   const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));

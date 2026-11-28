@@ -7,6 +7,17 @@
   <p>Generate AI shorts, animations, stories, explainers and news videos — or upload your own and publish them.</p>
 </section>
 
+{% if mabcat_enabled and user_role == 'admin' %}
+<div class="card" style="margin-bottom:20px"><div class="card-head"><h2>Mab Cat — AI teacher platform</h2>
+  <div class="actions"><a class="btn sm" href="{{ url_for('pages.mc_users') }}">Users</a><a class="btn sm" href="{{ url_for('pages.mc_students') }}">Students</a><a class="btn sm" href="{{ url_for('pages.mc_curriculum') }}">Curricula</a></div></div>
+  <div class="card-body"><div class="grid grid-4 stats" id="mcStats"></div></div></div>
+<script>document.addEventListener('DOMContentLoaded', () => mc.api('/analytics/overview').then((o) => {
+  const items = [['Centers', o.centers, 'layers'], ['Teachers', o.teachers, 'user'], ['Students', o.students, 'book'], ['Curricula', o.curricula, 'book'],
+    ['Parents', o.parents, 'user'], ['Robots', o.devices, 'cpu'], ['Teaching sessions', o.sessions, 'help'], ['Answers graded', o.answers, 'check-circle']];
+  document.getElementById('mcStats').innerHTML = items.map(([l, v, i]) => `<div class="stat" style="padding:6px 0"><div class="ico">${ui.icon(i)}</div><div><div class="val">${v}</div><div class="lbl">${l}</div></div></div>`).join('');
+}).catch(() => {}));</script>
+<h2 style="margin:0 0 12px">Video studio</h2>
+{% endif %}
 <div class="grid grid-4 stats" id="stats" aria-label="Video statistics">
   {% for key, label, ic, tone in [
     ('total','Total videos','library',''), ('ai_generated','AI-generated','sparkles',''),

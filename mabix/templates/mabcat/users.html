@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon %}
+{% block title %}Users{% endblock %}
+{% block crumb %}User management{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><p class="muted">Create accounts for teachers, parents and administrators, and assign them to a center.</p></div>
+  <button class="btn primary" id="newUser">{{ icon('plus', 'sm') }} New user</button>
+</div>
+<div class="toolbar">
+  <div class="search">{{ icon('search', 'sm') }}<input type="search" id="q" placeholder="Search name or email" aria-label="Search users"></div>
+  <div class="filters" id="roleFilter">
+    <button class="pill on" data-role="">All</button><button class="pill" data-role="admin">Admins</button>
+    <button class="pill" data-role="teacher">Teachers</button><button class="pill" data-role="parent">Parents</button>
+  </div>
+</div>
+<div class="card"><div class="table-wrap"><table class="table">
+  <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Center</th><th>Status</th><th>Created</th><th></th></tr></thead>
+  <tbody id="rows"><tr><td colspan="7"><div class="skeleton" style="height:120px"></div></td></tr></tbody>
+</table></div></div>
+{% endblock %}
+{% block scripts %}<script>
+(() => {
+  const { $, esc, fmt } = ui;
+  let users = [], role = '';
+  const ROLE = { admin: 'brand', teacher: 'info', parent: 'good' };
+  async function load() {
+    const [u, centers] = await Promise.all([mc.api('/users'), mc.centers()]);
+    users = u;
+    const q = $('#q').value.trim().toLowerCase();
+    const list = users.filter((x) => (!role || x.role === role) && (!q || (x.name + ' ' + x.email).toLowerCase().includes(q)));
+    $('#rows').innerHTML = list.length ? list.map((x) => `<tr>
+      <td><b>${esc(x.name || '—')}</b></td><td>${esc(x.email)}</td>
+      <td><span class="badge ${ROLE[x.role]}">${esc(x.role)}</span></td><td>${esc(mc.centerName(centers, x.center_id))}</td>
+      <td>${mc.pill(x.active, 'Active', 'Disabled')}</td><td class="subtle">${fmt.date(x.created_at)}</td>
+      <td style="white-space:nowrap"><button class="btn ghost sm" data-edit="${x.id}">${ui.icon('edit', 'sm')} Edit</button></td></tr>`).join('')
+      : `<tr><td colspan="7">${ui.empty('user', 'No users found', 'Create teacher and parent accounts with “New user”.')}</td></tr>`;
+  }
+  async function form(u) {
+    const centers = await mc.centers();
+    const m = ui.modal({ title: u ? 'Edit user' : 'New user', body: `<div class="stack">
+      <div class="form-grid" style="grid-template-columns:1fr 1fr">
+        <div class="field"><label for="f-name">Name</label><input type="text" id="f-name" value="${esc(u ? u.name : '')}"></div>
+        <div class="field"><label for="f-email">Email (login)</label><input type="text" id="f-email" value="${esc(u ? u.email : '')}" ${u ? 'disabled' : ''}></div>
+        <div class="field"><label for="f-role">Role</label><select id="f-role">${['teacher', 'parent', 'admin'].map((r) => `<option ${u && u.role === r ? 'selected' : ''}>${r}</option>`).join('')}</select></div>
+        <div class="field"><label for="f-center">Center</label><select id="f-center">${mc.opts(centers.map((c) => ({ id: c.id, label: c.name })), u && u.center_id, '(none)')}</select></div>
+      </div>
+      <div class="field"><label for="f-pw">${u ? 'Reset password (leave empty to keep)' : 'Password (min 6 characters)'}</label><input type="password" id="f-pw" autocomplete="new-password"></div>
+      ${u ? `<label class="check"><input type="checkbox" id="f-active" ${u.active ? 'checked' : ''}> Account active (can sign in)</label>` : ''}</div>`,
+      footer: '<button class="btn" data-x>Cancel</button><button class="btn primary" id="f-save">Save</button>' });
+    $('#f-save', m.el).onclick = (e) => mc.guard(async () => {
+      const body = { name: $('#f-name', m.el).value.trim(), role: $('#f-role', m.el).value, center_id: $('#f-center', m.el).value };
+      const pw = $('#f-pw', m.el).value;
+      if (u) {
+        if (pw) body.password = pw;
+        body.active = $('#f-active', m.el).checked;
+        await mc.api('/users/' + u.id, { method: 'PATCH', body });
+      } else {
+        await mc.api('/users', { body: { ...body, email: $('#f-email', m.el).value.trim(), password: pw, center_id: body.center_id || null } });
+      }
+      m.close(); ui.toast(u ? 'User updated' : 'User created'); load();
+    }, e.currentTarget, 'Saving…');
+  }
+  $('#newUser').onclick = () => form(null);
+  $('#rows').addEventListener('click', (e) => { const b = e.target.closest('[data-edit]'); if (b) form(users.find((x) => x.id === b.dataset.edit)); });
+  $('#roleFilter').addEventListener('click', (e) => { const b = e.target.closest('[data-role]'); if (!b) return; role = b.dataset.role;
+    document.querySelectorAll('#roleFilter .pill').forEach((p) => p.classList.toggle('on', p === b)); load(); });
+  $('#q').addEventListener('input', load);
+  load().catch((e) => ui.toast(e.message, 'bad'));
+})();
+</script>{% endblock %}

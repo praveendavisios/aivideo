@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon %}
+{% block title %}Robot devices{% endblock %}
+{% block crumb %}Mab Cat{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><p class="muted">Register each RoboCat, link it to a child, and manage its access token.</p></div>
+  <button class="btn primary" id="newDev">{{ icon('plus', 'sm') }} Register device</button>
+</div>
+<div id="tokenBox"></div>
+<div class="card"><div class="table-wrap"><table class="table">
+  <thead><tr><th>Device</th><th>Child</th><th>Status</th><th>Last seen</th><th></th></tr></thead>
+  <tbody id="rows"><tr><td colspan="5"><div class="skeleton" style="height:90px"></div></td></tr></tbody>
+</table></div></div>
+{% endblock %}
+{% block scripts %}<script>
+(() => {
+  const { $, esc, fmt } = ui;
+  let devices = [], students = [];
+  async function load() {
+    [devices, students] = await Promise.all([mc.api('/devices'), mc.api('/students')]);
+    const sname = (id) => (students.find((s) => s.id === id) || {}).display_name || '—';
+    $('#rows').innerHTML = devices.length ? devices.map((d) => `<tr>
+      <td><b>${esc(d.id)}</b><div class="subtle">${esc(d.name)}${d.firmware ? ' · firmware ' + esc(d.firmware) : ''}</div></td>
+      <td><select data-link="${d.id}" style="width:auto">${mc.opts(students.map((s) => ({ id: s.id, label: s.display_name })), d.student_id, '(no child)')}</select></td>
+      <td>${mc.pill(d.enabled, 'Enabled', 'Disabled')}</td><td class="subtle">${d.last_seen ? fmt.ago(d.last_seen + 'Z') : 'never connected'}</td>
+      <td style="white-space:nowrap"><button class="btn ghost sm" data-tog="${d.id}">${d.enabled ? 'Disable' : 'Enable'}</button>
+        <button class="btn ghost sm" data-rot="${d.id}">New token</button><button class="btn ghost sm danger" data-del="${d.id}">${ui.icon('trash', 'sm')}</button></td></tr>`).join('')
+      : `<tr><td colspan="5">${ui.empty('cpu', 'No robots registered', 'Register your RoboCat to get its connection token.')}</td></tr>`;
+  }
+  function showToken(id, token) {
+    $('#tokenBox').innerHTML = `<div class="notice warn" style="margin-bottom:16px">${ui.icon('shield')}<div><b>Device token for ${esc(id)} — shown only once.</b>
+      Put it in the robot's configuration (secure storage). Use “New token” if it is lost.<div class="row" style="margin-top:6px"><code class="mono" style="word-break:break-all">${esc(token)}</code>
+      <button class="btn sm" id="copyTok">Copy</button></div></div></div>`;
+    $('#copyTok').onclick = () => navigator.clipboard.writeText(token).then(() => ui.toast('Copied'));
+  }
+  $('#newDev').onclick = () => {
+    const m = ui.modal({ title: 'Register device', body: `<div class="stack">
+      <div class="field"><label for="d-id">Device ID</label><input type="text" id="d-id" placeholder="mabcat-001"><span class="hint">Letters, numbers, - and _ (3–64 characters)</span></div>
+      <div class="field"><label for="d-name">Name</label><input type="text" id="d-name" value="Mab Cat"></div>
+      <div class="field"><label for="d-stu">Child</label><select id="d-stu">${mc.opts(students.map((s) => ({ id: s.id, label: s.display_name })), '', '(link later)')}</select></div></div>`,
+      footer: '<button class="btn" data-x>Cancel</button><button class="btn primary" id="d-go">Register</button>' });
+    $('#d-go', m.el).onclick = (e) => mc.guard(async () => {
+      const d = await mc.api('/devices', { body: { device_id: $('#d-id', m.el).value.trim(), name: $('#d-name', m.el).value || 'Mab Cat', student_id: $('#d-stu', m.el).value || null } });
+      m.close(); showToken(d.id, d.device_token); load();
+    }, e.currentTarget, 'Registering…');
+  };
+  $('#rows').addEventListener('change', (e) => { const s = e.target.closest('[data-link]'); if (!s) return;
+    mc.guard(async () => { await mc.api(`/devices/${s.dataset.link}?student_id=${s.value}`, { method: 'PATCH' }); ui.toast('Device linked'); load(); }); });
+  $('#rows').addEventListener('click', async (e) => {
+    const b = e.target.closest('button'); if (!b) return;
+    if (b.dataset.tog) { const d = devices.find((x) => x.id === b.dataset.tog); mc.guard(async () => { await mc.api(`/devices/${d.id}?enabled=${!d.enabled}`, { method: 'PATCH' }); load(); }); }
+    if (b.dataset.rot && await ui.confirmDialog({ title: 'Create a new token?', message: 'The old token stops working immediately; update the robot with the new one.', confirmText: 'New token' }))
+      mc.guard(async () => { const r = await mc.api(`/devices/${b.dataset.rot}/rotate-token`, { method: 'POST' }); showToken(b.dataset.rot, r.device_token); });
+    if (b.dataset.del && await ui.confirmDialog({ title: 'Remove device?', message: 'The robot can no longer connect.', confirmText: 'Remove', danger: true }))
+      mc.guard(async () => { await mc.api('/devices/' + b.dataset.del, { method: 'DELETE' }); ui.toast('Device removed'); load(); });
+  });
+  load().catch((e) => ui.toast(e.message, 'bad'));
+})();
+</script>{% endblock %}

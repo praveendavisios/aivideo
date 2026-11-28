@@ -4,7 +4,8 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from ..db import get_db
-from ..models import Attempt, AuditLog, ClassGroup, ClassMember, Student, TeachingSession, Turn, UsageCost
+from ..models import (Attempt, AuditLog, Center, ClassGroup, ClassMember, Curriculum, Device, Student, TeachingSession,
+                      Turn, UsageCost, User)
 from ..security import current_user, get_student_for, require
 from ..teaching import student_engine
 
@@ -50,7 +51,10 @@ def class_analytics(class_id: str, db: Session = Depends(get_db), user=Depends(r
 
 @router.get("/analytics/overview", tags=["analytics"])
 def overview(db: Session = Depends(get_db), user=Depends(require("admin"))):
-    return {"students": db.scalar(select(func.count(Student.id))),
+    count = lambda m, *w: db.scalar(select(func.count()).select_from(m).where(*w)) or 0  # noqa: E731
+    return {"centers": count(Center), "teachers": count(User, User.role == "teacher"),
+            "parents": count(User, User.role == "parent"), "curricula": count(Curriculum), "devices": count(Device),
+            "students": db.scalar(select(func.count(Student.id))),
             "sessions": db.scalar(select(func.count(TeachingSession.id))),
             "answers": db.scalar(select(func.count(Attempt.id))),
             "correct": db.scalar(select(func.count(Attempt.id)).where(Attempt.correct)),

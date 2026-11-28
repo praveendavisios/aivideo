@@ -24,6 +24,7 @@ _batch = {"job_ids": [], "lock": threading.Lock()}
 
 @bp.before_request
 @auth.login_required
+@auth.role_required(*auth.STUDIO_ROLES)
 def _guard():
     return None
 

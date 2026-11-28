@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon %}
+{% block title %}Classes{% endblock %}
+{% block crumb %}Curriculum management{% endblock %}
+{% block content %}
+<div class="grid grid-3">
+  <section class="card"><div class="card-head"><h2>New class</h2></div><div class="card-body stack">
+    <div class="field"><label for="cName">Class name</label><input type="text" id="cName" placeholder="e.g. 5A Science"></div>
+    <button class="btn primary" id="cBtn">{{ icon('plus', 'sm') }} Create class</button>
+    <p class="subtle">Parents enrol their child with the class code (Students page). Students of your center are visible to you automatically.</p></div></section>
+  <section class="card span-2"><div class="card-head"><h2>Assign a curriculum</h2></div><div class="card-body form-grid">
+    <div class="field"><label for="aStu">Student</label><select id="aStu"></select></div>
+    <div class="field"><label for="aCur">Curriculum</label><select id="aCur"></select></div>
+    <div class="field" style="justify-content:flex-end"><button class="btn primary" id="aBtn">Assign</button></div>
+    <p class="subtle" style="grid-column:1/-1">Mab Cat only teaches lessons from curricula assigned to the student, in order, recommending the next unmastered topic.</p></div></section>
+</div>
+<div class="stack" id="classes" style="margin-top:18px"></div>
+{% endblock %}
+{% block scripts %}<script>
+(() => {
+  const { $, esc } = ui;
+  async function load() {
+    const [cls, stus, curs] = await Promise.all([mc.api('/classes'), mc.api('/students'), mc.api('/curricula')]);
+    $('#aStu').innerHTML = mc.opts(stus.map((s) => ({ id: s.id, label: `${s.display_name} (grade ${s.grade || '?'})` })));
+    $('#aCur').innerHTML = mc.opts(curs.filter((c) => c.status === 'ready').map((c) => ({ id: c.id, label: c.title })));
+    $('#classes').innerHTML = cls.length ? cls.map((c) => `<section class="card"><div class="card-head"><h2>${esc(c.name)}</h2>
+      <div class="actions"><span class="badge brand">Join code ${esc(c.join_code)}</span><button class="btn sm" data-an="${c.id}">${ui.icon('grid', 'sm')} Analytics</button></div></div>
+      <div class="card-body">${c.students.length ? c.students.map((s) => `<span class="badge" style="margin:2px">${esc(s.display_name)}</span>`).join('') : '<p class="subtle">No students yet — share the join code with parents.</p>'}
+      <div id="an-${c.id}"></div></div></section>`).join('') : `<div class="card">${ui.empty('grid', 'No classes yet', 'Create a class to group students and see class analytics.')}</div>`;
+  }
+  $('#cBtn').onclick = (e) => mc.guard(async () => {
+    if (!$('#cName').value.trim()) throw new Error('Enter a class name');
+    await mc.api('/classes?name=' + encodeURIComponent($('#cName').value.trim()), { method: 'POST' }); $('#cName').value = ''; ui.toast('Class created'); load();
+  }, e.currentTarget, 'Creating…');
+  $('#aBtn').onclick = (e) => mc.guard(async () => {
+    if (!$('#aStu').value || !$('#aCur').value) throw new Error('Choose a student and a ready curriculum');
+    await mc.api(`/assignments?student_id=${$('#aStu').value}&curriculum_id=${$('#aCur').value}`, { method: 'POST' }); ui.toast('Curriculum assigned');
+  }, e.currentTarget, 'Assigning…');
+  $('#classes').addEventListener('click', (e) => { const b = e.target.closest('[data-an]'); if (!b) return;
+    mc.guard(async () => {
+      const a = await mc.api(`/classes/${b.dataset.an}/analytics`);
+      $('#an-' + b.dataset.an).innerHTML = `<div class="divider"></div><p><b>Average accuracy:</b> ${a.average_accuracy == null ? '—' : Math.round(a.average_accuracy * 100) + '%'}
+        ${a.topics_needing_practice.length ? ' · <b>Needs practice:</b> ' + a.topics_needing_practice.map(([t, n]) => `${esc(t)} (${n})`).join(', ') : ''}</p>
+        <div class="table-wrap"><table class="table"><thead><tr><th>Student</th><th>Accuracy</th><th>Lessons done</th><th>Needs practice</th><th>Minutes</th></tr></thead><tbody>
+        ${a.students.map((s) => `<tr><td>${esc(s.name)}</td><td>${s.accuracy == null ? '—' : Math.round(s.accuracy * 100) + '%'}</td><td>${s.completed_lessons}</td><td>${esc(s.needs_practice.join(', ') || '—')}</td><td>${s.learning_minutes}</td></tr>`).join('')}</tbody></table></div>`;
+    }, b, '…'); });
+  load().catch((e) => ui.toast(e.message, 'bad'));
+})();
+</script>{% endblock %}

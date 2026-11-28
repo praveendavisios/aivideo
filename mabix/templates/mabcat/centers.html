@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon %}
+{% block title %}Centers{% endblock %}
+{% block crumb %}User management{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><p class="muted">Schools and learning centers. Teachers see the students and curricula of their own center.</p></div>
+  <button class="btn primary" id="newCenter">{{ icon('plus', 'sm') }} New center</button>
+</div>
+<div class="vgrid" id="grid"></div>
+{% endblock %}
+{% block scripts %}<script>
+(() => {
+  const { $, esc } = ui;
+  let centers = [];
+  async function load() {
+    mc.resetCenters(); centers = await mc.centers();
+    $('#grid').innerHTML = centers.length ? centers.map((c) => `<article class="card card-pad stack" style="gap:8px">
+        <div class="row"><h2 style="flex:1">${esc(c.name)}</h2>${mc.pill(c.active, 'Active', 'Inactive')}</div>
+        <p class="subtle">${esc(c.location || 'No location')}${c.contact ? ' · ' + esc(c.contact) : ''}</p>
+        <div class="row"><span class="badge info">${c.teachers} teacher${c.teachers === 1 ? '' : 's'}</span><span class="badge good">${c.students} student${c.students === 1 ? '' : 's'}</span></div>
+        <div class="row"><button class="btn sm" data-edit="${c.id}">${ui.icon('edit', 'sm')} Edit</button>
+          <button class="btn ghost sm danger" data-del="${c.id}">${ui.icon('trash', 'sm')} Delete</button></div></article>`).join('')
+      : `<div class="card" style="grid-column:1/-1">${ui.empty('layers', 'No centers yet', 'Create a center, then assign teachers and students to it.')}</div>`;
+  }
+  function form(c) {
+    const m = ui.modal({ title: c ? 'Edit center' : 'New center', body: `<div class="stack">
+      <div class="field"><label for="c-name">Name</label><input type="text" id="c-name" value="${esc(c ? c.name : '')}" placeholder="e.g. Mabix Learning Center, Kochi"></div>
+      <div class="field"><label for="c-loc">Location</label><input type="text" id="c-loc" value="${esc(c ? c.location : '')}"></div>
+      <div class="field"><label for="c-contact">Contact</label><input type="text" id="c-contact" value="${esc(c ? c.contact : '')}" placeholder="phone or email"></div>
+      <label class="check"><input type="checkbox" id="c-active" ${!c || c.active ? 'checked' : ''}> Active</label></div>`,
+      footer: '<button class="btn" data-x>Cancel</button><button class="btn primary" id="c-save">Save</button>' });
+    $('#c-save', m.el).onclick = (e) => mc.guard(async () => {
+      const body = { name: $('#c-name', m.el).value.trim(), location: $('#c-loc', m.el).value, contact: $('#c-contact', m.el).value, active: $('#c-active', m.el).checked };
+      await mc.api(c ? '/centers/' + c.id : '/centers', { method: c ? 'PATCH' : 'POST', body });
+      m.close(); ui.toast('Center saved'); load();
+    }, e.currentTarget, 'Saving…');
+  }
+  $('#newCenter').onclick = () => form(null);
+  $('#grid').addEventListener('click', async (e) => {
+    const ed = e.target.closest('[data-edit]'); if (ed) return form(centers.find((c) => c.id === ed.dataset.edit));
+    const d = e.target.closest('[data-del]');
+    if (d && await ui.confirmDialog({ title: 'Delete center?', message: 'Only possible when no users or students belong to it.', confirmText: 'Delete', danger: true }))
+      mc.guard(async () => { await mc.api('/centers/' + d.dataset.del, { method: 'DELETE' }); ui.toast('Center deleted'); load(); });
+  });
+  load().catch((e) => ui.toast(e.message, 'bad'));
+})();
+</script>{% endblock %}

@@ -74,8 +74,58 @@ def check_csrf():
         abort(400)
 
 
+def mabcat_enabled():
+    """True when the studio runs inside the RoboCat FastAPI app (one login for everything)."""
+    import os
+    return os.environ.get("MABCAT_MOUNTED") == "1"
+
+
+def _mabcat_session_user(identifier, password):
+    """Authenticate a RoboCat account (email) or map the studio admin to the RoboCat admin.
+
+    Returns {user, name, role, mc_token, mc_user_id} or None.
+    """
+    if not mabcat_enabled():
+        return None
+    from mabixai.backend.db import session_scope
+    from mabixai.backend.models import User
+    from mabixai.backend.security import authenticate, issue_token
+    with session_scope() as db:
+        u = authenticate(db, identifier, password) if "@" in identifier else None
+        if u is None and verify(identifier, password):  # studio admin login → RoboCat admin account
+            u = db.query(User).filter(User.role == "admin", User.active.is_(True)).order_by(User.created_at).first()
+            if u is None:
+                return {"user": identifier, "name": identifier, "role": "admin", "mc_token": None, "mc_user_id": None}
+        if u is None:
+            return None
+        return {"user": u.email, "name": u.name or u.email.split("@")[0], "role": u.role,
+                "mc_token": issue_token(db, u), "mc_user_id": u.id}
+
+
 def is_logged_in():
-    return session.get("user") == Config.ADMIN_USERNAME
+    return bool(session.get("user"))
+
+
+def current_role():
+    return session.get("role", "admin")
+
+
+STUDIO_ROLES = ("admin", "teacher")
+
+
+def role_required(*roles):
+    """Allow the given roles (admin always passes)."""
+    def deco(view):
+        @functools.wraps(view)
+        def wrapped(*a, **kw):
+            if current_role() != "admin" and current_role() not in roles:
+                if request.path.startswith(("/api/", "/media/")) or request.is_json:
+                    return jsonify(error="You don't have access to this section"), 403
+                flash("That section is not available for your account.")
+                return redirect(url_for("pages.home_for_role"))
+            return view(*a, **kw)
+        return wrapped
+    return deco
 
 
 def login_required(view):
@@ -93,13 +143,13 @@ def login_required(view):
 def _safe_next(target):
     if target and target.startswith("/") and not target.startswith("//"):
         return target
-    return url_for("pages.dashboard")
+    return url_for("pages.home_for_role")
 
 
 @bp.route("/login", methods=["GET", "POST"])
 def login():
     if is_logged_in():
-        return redirect(url_for("pages.dashboard"))
+        return redirect(url_for("pages.home_for_role"))
     error = None
     if request.method == "POST":
         ip = request.remote_addr or "?"
@@ -109,13 +159,16 @@ def login():
         else:
             username = request.form.get("username", "").strip()
             password = request.form.get("password", "")
-            if verify(username, password):
+            info = _mabcat_session_user(username, password)
+            if info is None and not mabcat_enabled() and verify(username, password):
+                info = {"user": username, "name": username, "role": "admin", "mc_token": None, "mc_user_id": None}
+            if info:
                 session.clear()
                 session.permanent = True
-                session["user"] = username
+                session.update(info)
                 csrf_token()
                 _attempts.pop(ip, None)
-                current_app.logger.info("Admin login from %s", ip)
+                current_app.logger.info("Login %s (%s) from %s", info["user"], info["role"], ip)
                 return redirect(_safe_next(request.form.get("next")))
             _attempts.setdefault(ip, []).append(time.time())
             current_app.logger.warning("Failed login from %s", ip)
@@ -127,6 +180,15 @@ def login():
 
 @bp.route("/logout", methods=["POST"])
 def logout():
+    token = session.get("mc_token")
+    if token and mabcat_enabled():
+        try:
+            from mabixai.backend.db import session_scope
+            from mabixai.backend.security import revoke_token
+            with session_scope() as db:
+                revoke_token(db, token)
+        except Exception:
+            pass
     session.clear()
     flash("You have been signed out.")
     return redirect(url_for("auth.login"))

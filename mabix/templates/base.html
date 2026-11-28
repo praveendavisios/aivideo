@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="csrf-token" content="{{ csrf_token() }}">
+<meta name="mc-token" content="{{ mc_token }}">
 <title>{% block title %}Dashboard{% endblock %} · Mabix AI</title>
 <link rel="icon" href="{{ logo_url }}">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -14,18 +15,27 @@
     if (t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t); } catch (e) {} })();
 </script>
 </head>
-<body>
+<body data-role="{{ user_role }}">
 {% include "_icons.html" %}
 <div class="app">
   <aside class="sidebar" id="sidebar" aria-label="Main navigation">
-    <a class="brand" href="{{ url_for('pages.dashboard') }}" aria-label="Mabix AI home">
+    <a class="brand" href="{{ url_for('pages.home_for_role') }}" aria-label="Mabix AI home">
       <img src="{{ logo_url }}" alt="Mabix AI" onerror="this.remove();document.getElementById('wm').hidden=false">
       <span class="wordmark" id="wm" hidden>Mabix <b>AI</b></span>
     </a>
+    {% set R = user_role %}{% set STUDIO = R in ('admin', 'teacher') %}{% set MC = mabcat_enabled %}
     <nav class="nav">
-      <a href="{{ url_for('pages.dashboard') }}" class="{{ 'active' if active == 'dashboard' }}">{{ icon('grid') }} Dashboard</a>
-      <div class="nav-label">Create</div>
-      {% set studio_open = active and active.startswith('studio') %}
+      {% if STUDIO %}<a href="{{ url_for('pages.dashboard') }}" class="{{ 'active' if active == 'dashboard' }}">{{ icon('grid') }} Dashboard</a>{% endif %}
+
+      {% if MC %}
+      <div class="nav-label">Users</div>
+      {% if R == 'admin' %}<a href="{{ url_for('pages.mc_users') }}" class="{{ 'active' if active == 'mc-users' }}">{{ icon('user') }} Users</a>{% endif %}
+      <a href="{{ url_for('pages.mc_students') }}" class="{{ 'active' if active == 'mc-students' }}">{{ icon('book') }} {{ 'My children' if R == 'parent' else 'Students' }}</a>
+      {% if R == 'admin' %}<a href="{{ url_for('pages.mc_centers') }}" class="{{ 'active' if active == 'mc-centers' }}">{{ icon('layers') }} Centers</a>{% endif %}
+      {% endif %}
+
+      {% if STUDIO %}
+      <div class="nav-label">Videos</div>
       <button class="nav-group" type="button" aria-expanded="true" aria-controls="nav-studio" data-group="studio">
         {{ icon('sparkles') }} AI Video Studio {{ icon('chev', 'sm chev') }}
       </button>
@@ -36,16 +46,31 @@
       </div>
       <a href="{{ url_for('pages.news_page') }}" class="{{ 'active' if active == 'news' }}">{{ icon('news') }} News Feed Videos</a>
       <a href="{{ url_for('pages.upload_page') }}" class="{{ 'active' if active == 'upload' }}">{{ icon('upload') }} Direct Upload</a>
-      <div class="nav-label">Manage</div>
       <a href="{{ url_for('pages.library_page') }}" class="{{ 'active' if active == 'library' }}">{{ icon('library') }} Video Library</a>
       <a href="{{ url_for('pages.history_page') }}" class="{{ 'active' if active == 'history' }}">{{ icon('clock') }} Generation History
         <span class="badge info live" id="nav-active" hidden style="margin-left:auto"><span class="dot"></span><span></span></span></a>
+      {% endif %}
+
+      {% if MC %}
+      <div class="nav-label">Curriculum</div>
+      <a href="{{ url_for('pages.mc_curriculum') }}" class="{{ 'active' if active == 'mc-curriculum' }}">{{ icon('book') }} Curricula & lessons</a>
+      {% if R in ('admin', 'teacher') %}<a href="{{ url_for('pages.mc_classes') }}" class="{{ 'active' if active == 'mc-classes' }}">{{ icon('grid') }} Classes</a>{% endif %}
+
+      <div class="nav-label">Mab Cat</div>
+      <a href="{{ url_for('pages.mc_console') }}" class="{{ 'active' if active == 'mc-console' }}">{{ icon('help') }} Teaching console</a>
+      <a href="{{ url_for('pages.mc_speech') }}" class="{{ 'active' if active == 'mc-speech' }}">{{ icon('mic') }} Speech console</a>
+      {% if R in ('admin', 'parent') %}<a href="{{ url_for('pages.mc_devices') }}" class="{{ 'active' if active == 'mc-devices' }}">{{ icon('cpu') }} Robot devices</a>{% endif %}
+      {% endif %}
+
+      {% if R == 'admin' %}
+      <div class="nav-label">System</div>
       <a href="{{ url_for('pages.settings_page') }}" class="{{ 'active' if active == 'settings' }}">{{ icon('settings') }} Settings</a>
+      {% endif %}
     </nav>
     <div class="sidebar-foot">
       <div class="profile">
         <div class="avatar" aria-hidden="true">{{ admin_name[:1] }}</div>
-        <div class="who"><b>{{ admin_name }}</b><span class="subtle">Administrator</span></div>
+        <div class="who"><b>{{ admin_name }}</b><span class="subtle">{{ {'admin': 'Administrator', 'teacher': 'Teacher', 'parent': 'Parent'}.get(user_role, user_role) }}</span></div>
         <form method="post" action="{{ url_for('auth.logout') }}" data-confirm-logout>
           <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
           <button class="btn ghost sm icon-only" title="Sign out" aria-label="Sign out">{{ icon('logout', 'sm') }}</button>
@@ -75,6 +100,12 @@
 <div class="toasts" id="toasts" role="status" aria-live="polite"></div>
 <script src="{{ url_for('static', filename='js/api.js') }}?v={{ app_version }}"></script>
 <script src="{{ url_for('static', filename='js/ui.js') }}?v={{ app_version }}"></script>
+{% if mabcat_enabled %}<script>
+  /* hand the RoboCat token to the consoles (same origin, this tab only) */
+  try { sessionStorage.setItem('mabcat-token', {{ mc_token|tojson }});
+        sessionStorage.setItem('mabcat-user', JSON.stringify({id: {{ mc_user_id|tojson }}, email: {{ mc_email|tojson }}, role: {{ user_role|tojson }}, name: {{ admin_name|tojson }}})); } catch (e) {}
+</script>
+<script src="{{ url_for('static', filename='js/mabcat.js') }}?v={{ app_version }}"></script>{% endif %}
 {% block scripts %}{% endblock %}
 </body>
 </html>

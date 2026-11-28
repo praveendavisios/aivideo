@@ -173,6 +173,7 @@
 
   /* active-jobs indicator */
   async function pollActive() {
+    if (!['admin', 'teacher'].includes(document.body.dataset.role)) return;  // studio jobs are staff-only
     try {
       const d = await api.get('/api/jobs?active=1&per_page=100');
       const n = d.total;

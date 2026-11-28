@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon %}
+{% block title %}{{ 'My children' if user_role == 'parent' else 'Students' }}{% endblock %}
+{% block crumb %}User management{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><p class="muted">{% if user_role == 'parent' %}Your children's profiles, consent, daily limits and learning progress.{% elif user_role == 'teacher' %}Students in your center and classes (read-only — parents and admins manage profiles).{% else %}All student profiles. Link each child to a parent account and a center.{% endif %}</p></div>
+  <div class="row">{% if user_role == 'parent' %}<button class="btn" id="joinClass">Join a class</button>{% endif %}
+  {% if user_role in ('admin', 'parent') %}<button class="btn primary" id="newStudent">{{ icon('plus', 'sm') }} {{ 'Add child' if user_role == 'parent' else 'New student' }}</button>{% endif %}</div>
+</div>
+<div class="toolbar">
+  <div class="search">{{ icon('search', 'sm') }}<input type="search" id="q" placeholder="Search by name" aria-label="Search students"></div>
+  {% if user_role == 'admin' %}<select id="centerFilter" style="width:auto" aria-label="Center"></select>{% endif %}
+</div>
+<div class="card"><div class="table-wrap"><table class="table">
+  <thead><tr><th>Student</th><th>Grade</th><th>Center</th>{% if user_role == 'admin' %}<th>Parent</th>{% endif %}<th>Consent</th><th>Daily limit</th><th>Level</th><th></th></tr></thead>
+  <tbody id="rows"><tr><td colspan="8"><div class="skeleton" style="height:120px"></div></td></tr></tbody>
+</table></div></div>
+<p class="subtle" style="margin-top:12px">Mab Cat teaches a child only after a parent (or admin) gives learning consent; voice is processed only with voice consent. Raw voice recordings are not kept by default.</p>
+{% endblock %}
+{% block scripts %}<script>
+(() => {
+  const { $, esc } = ui;
+  const ROLE = mc.role(), canEdit = ROLE !== 'teacher';
+  let students = [], parents = [], centers = [];
+  async function load() {
+    [students, centers] = await Promise.all([mc.api('/students'), mc.centers()]);
+    if (ROLE === 'admin') {
+      parents = await mc.api('/users?role=parent');
+      const cf = $('#centerFilter');
+      if (!cf.options.length) cf.innerHTML = mc.opts(centers.map((c) => ({ id: c.id, label: c.name })), '', 'All centers');
+    }
+    const q = $('#q').value.trim().toLowerCase(), cid = $('#centerFilter') ? $('#centerFilter').value : '';
+    const list = students.filter((s) => (!q || s.display_name.toLowerCase().includes(q)) && (!cid || s.center_id === cid));
+    const pname = (id) => (parents.find((p) => p.id === id) || {}).email || (id ? 'admin-managed' : '—');
+    $('#rows').innerHTML = list.length ? list.map((s) => `<tr>
+      <td><b>${esc(s.display_name)}</b><div class="subtle">${esc(s.preferred_language)}${s.age ? ' · age ' + s.age : ''}</div></td>
+      <td>${esc(s.grade || '—')}</td><td>${esc(mc.centerName(centers, s.center_id))}</td>
+      ${ROLE === 'admin' ? `<td class="subtle">${esc(pname(s.parent_id))}</td>` : ''}
+      <td>${canEdit ? `<label class="check"><input type="checkbox" data-cl="${s.id}" ${s.consent_learning ? 'checked' : ''}> learning</label><br>
+          <label class="check"><input type="checkbox" data-ca="${s.id}" ${s.consent_audio ? 'checked' : ''}> voice</label>`
+          : `${mc.pill(s.consent_learning, 'learning', 'no learning consent')} ${mc.pill(s.consent_audio, 'voice', 'no voice')}`}</td>
+      <td>${s.daily_limit_minutes ? s.daily_limit_minutes + ' min' : 'No limit'}</td><td><span class="badge brand">${esc(s.level)}</span></td>
+      <td style="white-space:nowrap"><button class="btn ghost sm" data-prog="${s.id}">${ui.icon('eye', 'sm')} Progress</button>
+        ${canEdit ? `<button class="btn ghost sm" data-edit="${s.id}">${ui.icon('edit', 'sm')}</button><button class="btn ghost sm danger" data-del="${s.id}">${ui.icon('trash', 'sm')}</button>` : ''}</td></tr>`).join('')
+      : `<tr><td colspan="8">${ui.empty('book', 'No students yet', canEdit ? 'Add a student to start teaching with Mab Cat.' : 'Students appear when they are in your center or join your class.')}</td></tr>`;
+  }
+  function form(s) {
+    const m = ui.modal({ title: s ? 'Edit student' : (ROLE === 'parent' ? 'Add child' : 'New student'), body: `<div class="stack">
+      <div class="form-grid" style="grid-template-columns:1fr 1fr">
+        <div class="field"><label for="s-name">First name or nickname</label><input type="text" id="s-name" value="${esc(s ? s.display_name : '')}"></div>
+        <div class="field"><label for="s-grade">Grade</label><input type="text" id="s-grade" value="${esc(s ? s.grade : '')}"></div>
+        <div class="field"><label for="s-age">Age</label><input type="number" id="s-age" min="3" max="18" value="${s && s.age ? s.age : ''}"></div>
+        <div class="field"><label for="s-lang">Preferred language</label><select id="s-lang">${[['en', 'English'], ['ml', 'Malayalam'], ['hi', 'Hindi'], ['ta', 'Tamil'], ['kn', 'Kannada'], ['te', 'Telugu']]
+          .map(([k, l]) => `<option value="${k}" ${s && s.preferred_language === k ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
+        <div class="field"><label for="s-limit">Daily limit (minutes, 0 = none)</label><input type="number" id="s-limit" min="0" max="600" value="${s ? s.daily_limit_minutes : 60}"></div>
+        <div class="field"><label for="s-persona">Teacher persona</label><select id="s-persona">${['friendly', 'storyteller', 'math', 'science', 'language', 'coding']
+          .map((p) => `<option ${s && s.persona === p ? 'selected' : ''}>${p}</option>`).join('')}</select></div>
+        <div class="field"><label for="s-center">Center</label><select id="s-center">${mc.opts(centers.map((c) => ({ id: c.id, label: c.name })), s && s.center_id, '(none)')}</select></div>
+        ${ROLE === 'admin' ? `<div class="field"><label for="s-parent">Parent account</label><select id="s-parent">${mc.opts(parents.map((p) => ({ id: p.id, label: p.email })), s && s.parent_id, '(managed by admin)')}</select></div>` : ''}
+      </div></div>`, footer: '<button class="btn" data-x>Cancel</button><button class="btn primary" id="s-save">Save</button>' });
+    $('#s-save', m.el).onclick = (e) => mc.guard(async () => {
+      const body = { display_name: $('#s-name', m.el).value.trim(), grade: $('#s-grade', m.el).value.trim(), age: +$('#s-age', m.el).value || null,
+        preferred_language: $('#s-lang', m.el).value, daily_limit_minutes: +$('#s-limit', m.el).value || 0, persona: $('#s-persona', m.el).value,
+        center_id: $('#s-center', m.el).value || null, parent_id: $('#s-parent', m.el) ? $('#s-parent', m.el).value || null : null };
+      await mc.api(s ? '/students/' + s.id : '/students', { method: s ? 'PATCH' : 'POST', body });
+      m.close(); ui.toast('Student saved'); load();
+    }, e.currentTarget, 'Saving…');
+  }
+  async function progress(id) {
+    const p = await mc.api(`/students/${id}/progress`);
+    ui.modal({ title: 'Learning progress', wide: true, body: `<div class="grid grid-4" style="margin-bottom:14px">
+      ${[['Accuracy', p.accuracy == null ? '—' : Math.round(p.accuracy * 100) + '%'], ['Answers', `${p.correct}/${p.answers}`], ['Lessons done', p.completed_lessons], ['Minutes', p.learning_minutes]]
+        .map(([l, v]) => `<div class="card stat"><div><div class="val">${v}</div><div class="lbl">${l}</div></div></div>`).join('')}</div>
+      <p><b>Level:</b> ${esc(p.level)} · <b>Strengths:</b> ${esc(p.strengths.join(', ') || '—')} · <b>Needs practice:</b> ${esc(p.needs_practice.join(', ') || '—')} · <b>Next:</b> ${esc(p.next ? p.next.title : '—')}</p>
+      <div class="table-wrap"><table class="table"><thead><tr><th>Topic</th><th>Mastery</th><th>Attempts</th></tr></thead><tbody>
+      ${p.topics.map((t) => `<tr><td>${esc(t.title)}</td><td><div class="row" style="flex-wrap:nowrap"><div class="progress" style="width:120px"><i style="width:${Math.round(t.mastery * 100)}%"></i></div>${Math.round(t.mastery * 100)}%${t.completed ? ' ✓' : ''}</div></td><td>${t.attempts}</td></tr>`).join('')
+        || '<tr><td colspan="3" class="subtle">No lessons yet.</td></tr>'}</tbody></table></div>` });
+  }
+  $('#rows').addEventListener('change', (e) => {
+    const id = e.target.dataset.cl || e.target.dataset.ca; if (!id) return;
+    mc.guard(async () => {
+      await mc.api(`/students/${id}/consent`, { method: 'PUT', body: { learning: $(`[data-cl="${id}"]`).checked, audio: $(`[data-ca="${id}"]`).checked } });
+      ui.toast('Consent updated'); load();
+    });
+  });
+  $('#rows').addEventListener('click', async (e) => {
+    const b = e.target.closest('button'); if (!b) return;
+    if (b.dataset.prog) mc.guard(() => progress(b.dataset.prog));
+    if (b.dataset.edit) form(students.find((s) => s.id === b.dataset.edit));
+    if (b.dataset.del && await ui.confirmDialog({ title: 'Delete student?', message: 'The profile and ALL learning data (sessions, answers, progress) are permanently deleted.', confirmText: 'Delete', danger: true }))
+      mc.guard(async () => { await mc.api('/students/' + b.dataset.del, { method: 'DELETE' }); ui.toast('Student deleted'); load(); });
+  });
+  $('#newStudent') && ($('#newStudent').onclick = () => form(null));
+  $('#joinClass') && ($('#joinClass').onclick = () => {
+    const m = ui.modal({ title: 'Join a teacher\'s class', body: `<div class="stack">
+      <div class="field"><label for="j-stu">Child</label><select id="j-stu">${mc.opts(students.map((s) => ({ id: s.id, label: s.display_name })))}</select></div>
+      <div class="field"><label for="j-code">Class code (from the teacher)</label><input type="text" id="j-code"></div>
+      <p class="subtle">The teacher will see this child's lesson progress.</p></div>`,
+      footer: '<button class="btn" data-x>Cancel</button><button class="btn primary" id="j-go">Join</button>' });
+    $('#j-go', m.el).onclick = (e) => mc.guard(async () => {
+      const r = await mc.api(`/classes/join?join_code=${encodeURIComponent($('#j-code', m.el).value.trim())}&student_id=${$('#j-stu', m.el).value}`, { method: 'POST' });
+      m.close(); ui.toast('Joined ' + r.class);
+    }, e.currentTarget, 'Joining…');
+  });
+  $('#q').addEventListener('input', load);
+  $('#centerFilter') && $('#centerFilter').addEventListener('change', load);
+  load().catch((e) => ui.toast(e.message, 'bad'));
+})();
+</script>{% endblock %}
