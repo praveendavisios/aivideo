@@ -19,8 +19,8 @@ from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
 from ..config import settings
 from ..db import session_scope, utcnow
-from ..models import Device, Student, TeachingSession
-from ..security import audit, authenticate_device, user_from_token
+from ..models import Device, Student, TeachingSession, User
+from ..security import audit, authenticate_device, user_from_token, visible_student_ids
 from ..speech.audio.preprocessing import AudioError
 from ..speech.session_manager import AudioSession
 from ..speech.tts import engines as tts
@@ -118,10 +118,23 @@ async def _authenticate(ws, device_id):
     return None, "auth_failed"
 
 
+def _device_may_teach(db, device, student):
+    """A robot may teach: the student it is linked to, its owner's own children, any student when an
+    admin owns it, and students a teacher-owner can see (their center / classes)."""
+    if device.student_id == student.id or student.parent_id == device.owner_id:
+        return True
+    owner = db.get(User, device.owner_id)
+    if not owner or not owner.active:
+        return False
+    if owner.role == "admin":
+        return True
+    return owner.role == "teacher" and student.id in (visible_student_ids(db, owner) or set())
+
+
 def _student_ok(db, device_id, student_id, need_audio=False):
     d = db.get(Device, device_id)
     st = db.get(Student, student_id) if student_id else None
-    if not st or not d or st.parent_id != d.owner_id:
+    if not st or not d or not _device_may_teach(db, d, st):
         return None, ("student_not_found", "Student not linked to this device's account")
     if not st.consent_learning:
         return None, ("consent_required", "A parent must give consent before Mab Cat can teach this student")

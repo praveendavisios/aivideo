@@ -116,6 +116,33 @@ def test_column_migration_on_old_database(tmp_path):
                 "password_hash VARCHAR(300), active BOOLEAN, created_at DATETIME, updated_at DATETIME)")
     con.commit()
     con.close()
-    db.configure(f"sqlite:///{path}")
-    cols = [r[1] for r in sqlite3.connect(path).execute("PRAGMA table_info(users)")]
-    assert "center_id" in cols
+    previous = db.engine().url.render_as_string(hide_password=False)
+    try:
+        db.configure(f"sqlite:///{path}")
+        cols = [r[1] for r in sqlite3.connect(path).execute("PRAGMA table_info(users)")]
+        assert "center_id" in cols
+    finally:
+        db.configure(previous)  # don't leak the throwaway database into later tests
+
+
+def test_admin_registered_device_can_teach_admin_managed_student(client, people):
+    """Regression: device owned by the admin, student belongs to a parent account."""
+    import json
+    admin = people["admin"]
+    users = client.get("/api/v1/users", headers=admin).json()
+    assert isinstance(users, list), users
+    parent = next(u for u in users if u["role"] == "parent")
+    st = client.post("/api/v1/students", headers=admin, json={"display_name": "Kiran", "parent_id": parent["id"]}).json()
+    client.put(f"/api/v1/students/{st['id']}/consent", headers=admin, json={"learning": True, "audio": False})
+    dev = client.post("/api/v1/devices", headers=admin, json={"device_id": "admin-cat"}).json()
+    with client.websocket_connect("/ws/mabcat/admin-cat") as ws:
+        ws.send_text(json.dumps({"type": "auth", "token": dev["device_token"]}))
+        assert json.loads(ws.receive_text())["type"] == "connected"
+        ws.send_text(json.dumps({"type": "session_start", "student_id": st["id"], "tts": False}))
+        types = []
+        for _ in range(10):
+            m = json.loads(ws.receive_text())
+            types.append(m["type"])
+            if m["type"] in ("session_started", "error"):
+                break
+        assert types[-1] == "session_started", types

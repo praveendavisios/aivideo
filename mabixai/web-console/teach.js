@@ -23,9 +23,16 @@
 
   /* ---------- chat ---------- */
   function bubble(cls, html, meta = '') {
+    $('#chatWelcome')?.remove();
     const d = document.createElement('div'); d.className = 'msg ' + cls; d.innerHTML = html + (meta ? `<div class="meta">${meta}</div>` : '');
-    $('#chat').appendChild(d); $('#chat').scrollTop = 1e9; return d;
+    if (cls.startsWith('teacher')) {  // Mab Cat speaks: avatar + bubble
+      const row = document.createElement('div'); row.className = 'msg-row teacher';
+      row.innerHTML = MabCatArt.avatar(); row.appendChild(d); $('#chat').appendChild(row);
+    } else $('#chat').appendChild(d);
+    $('#chat').scrollTop = 1e9; return d;
   }
+  $('#chat').innerHTML = `<div id="chatWelcome" class="chat-welcome">${MabCatArt.robot()}
+    <h3>Hi! I'm Mab Cat 👋</h3><p>Connect a session, then ask me anything or start a lesson — I'll teach from your curriculum.</p></div>`;
   const srcChips = (s) => (s || []).map((x) => `<span class="src">📄 ${esc(x.filename || 'source')} p.${esc(x.page)}</span>`).join('');
 
   /* ---------- sign-in & setup ---------- */
